@@ -40,3 +40,4 @@ counsel_signing.pem
 # IDE
 .vscode/settings.json
 .idea/
+ideas/
