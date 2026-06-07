@@ -1,0 +1,69 @@
+rule: log_tampering_detected
+emits: [defense_evasion]
+signals:
+  - artifact: evtx.query
+    supports: defense_evasion
+    weight: 0.95
+    independent_of: evtx.query
+
+  - artifact: mft.timeline
+    supports: defense_evasion
+    weight: 0.70
+    independent_of: mft.timeline
+
+provenance: "SANS FOR508; Windows Event Log forensics; MITRE ATT&CK T1070.001; EventID 1102 (Security log cleared)"
+
+---
+
+rule: timestomping_detected
+emits: [defense_evasion]
+signals:
+  - artifact: mft.timeline
+    supports: defense_evasion
+    weight: 0.85
+    independent_of: mft.timeline
+
+  - artifact: fs.stat_hash
+    supports: defense_evasion
+    weight: 0.55
+    independent_of: fs.stat_hash
+
+  - artifact: amcache.lookup
+    supports: defense_evasion
+    weight: 0.70
+    independent_of: mft.timeline
+
+provenance: "SANS FOR508; 'Windows Timestomping' Harlan Carvey; MITRE ATT&CK T1070.006; MFT vs $STANDARD_INFORMATION discrepancy"
+
+---
+
+rule: lolbin_execution
+emits: [defense_evasion, payload_executed]
+signals:
+  - artifact: prefetch.run_record
+    supports: payload_executed
+    weight: 0.88
+    independent_of: prefetch.run_record
+
+  - artifact: amcache.lookup
+    supports: payload_executed
+    weight: 0.60
+    independent_of: prefetch.run_record
+
+  - artifact: evtx.query
+    supports: defense_evasion
+    weight: 0.75
+    independent_of: prefetch.run_record
+
+  - artifact: mem.pslist
+    supports: defense_evasion
+    weight: 0.65
+    independent_of: mem.pslist
+
+modifiers:
+  - artifact: fs.stat_hash
+    effect: benign_indicator
+    requires: "signed == true"
+    note: "Legitimate Microsoft binary used as LOLBin — signed status does NOT indicate benign"
+
+provenance: "LOLBAS project lolbas-project.github.io; MITRE ATT&CK T1218; SANS FOR508 LOLBin chapter"

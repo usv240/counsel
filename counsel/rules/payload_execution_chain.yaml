@@ -1,0 +1,68 @@
+rule: payload_execution_confirmed
+emits: [payload_executed]
+signals:
+  - artifact: prefetch.run_record
+    supports: payload_executed
+    weight: 0.92
+    independent_of: prefetch.run_record
+
+  - artifact: amcache.lookup
+    supports: payload_executed
+    weight: 0.65
+    independent_of: prefetch.run_record
+    requires: "linked_pe == true"
+
+  - artifact: evtx.query
+    supports: payload_executed
+    weight: 0.80
+    independent_of: prefetch.run_record
+
+  - artifact: mft.timeline
+    supports: payload_executed
+    weight: 0.50
+    independent_of: mft.timeline
+
+contradictions:
+  - artifact: fs.stat_hash
+    weight: 0.60
+    requires: "exists == false"
+
+provenance: "SANS FOR508 Chapter 3; Zimmerman PECmd docs; Windows Internals 7th ed. Amcache chapter; MITRE ATT&CK T1059"
+
+---
+
+rule: payload_present_on_disk
+emits: [payload_present]
+signals:
+  - artifact: fs.stat_hash
+    supports: payload_present
+    weight: 0.95
+    independent_of: fs.stat_hash
+    requires: "exists == true"
+
+  - artifact: mft.timeline
+    supports: payload_present
+    weight: 0.70
+    independent_of: mft.timeline
+
+  - artifact: yara.scan
+    supports: payload_present
+    weight: 0.85
+    independent_of: yara.scan
+
+contradictions:
+  - artifact: fs.stat_hash
+    weight: 0.90
+    requires: "exists == false"
+
+modifiers:
+  - artifact: fs.stat_hash
+    effect: benign_indicator
+    requires: "signed == true"
+    note: "Microsoft-signed binary — consider LOLBin abuse (e.g., regsvr32, mshta, certutil)"
+
+  - artifact: yara.scan
+    effect: suspicion
+    note: "YARA match on known malware rule — strong malware identity indicator"
+
+provenance: "SANS FOR408; MFT forensics — William Ballenthin; YARA documentation"

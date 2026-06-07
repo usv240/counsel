@@ -1,0 +1,48 @@
+rule: persistence_via_run_key
+emits: [persistence_configured, payload_present, payload_executed, payload_active]
+signals:
+  - artifact: registry.run_keys
+    supports: persistence_configured
+    weight: 0.95
+    independent_of: registry.run_keys
+
+  - artifact: fs.stat_hash
+    supports: payload_present
+    weight: 0.70
+    independent_of: fs.stat_hash
+    requires: "exists == true"
+
+  - artifact: prefetch.run_record
+    supports: payload_executed
+    weight: 0.90
+    independent_of: prefetch.run_record
+
+  - artifact: amcache.lookup
+    supports: payload_executed
+    weight: 0.60
+    independent_of: prefetch.run_record
+    requires: "linked_pe == true"
+
+  - artifact: mem.pslist
+    supports: payload_active
+    weight: 0.90
+    independent_of: mem.pslist
+
+  - artifact: net.flows
+    supports: payload_active
+    weight: 0.65
+    independent_of: mem.pslist
+    requires: "is_external == true"
+
+contradictions:
+  - artifact: fs.stat_hash
+    weight: 0.75
+    requires: "exists == false"
+
+modifiers:
+  - artifact: fs.stat_hash
+    effect: benign_indicator
+    requires: "signed == true"
+    note: "Signed binary — LOLBin or signed-proxy abuse remains possible; never resolves benign alone"
+
+provenance: "SANS FOR500 Module 5; MITRE ATT&CK T1547.001; Zimmerman PECmd + AmcacheParser docs; Mandiant M-Trends 2023 persistence techniques"

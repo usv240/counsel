@@ -1,0 +1,54 @@
+rule: c2_communication_confirmed
+emits: [c2_communication, payload_active]
+signals:
+  - artifact: net.flows
+    supports: c2_communication
+    weight: 0.85
+    independent_of: net.flows
+    requires: "is_external == true"
+
+  - artifact: mem.netscan
+    supports: c2_communication
+    weight: 0.90
+    independent_of: net.flows
+    requires: "is_external == true"
+
+  - artifact: mem.pslist
+    supports: payload_active
+    weight: 0.88
+    independent_of: mem.netscan
+
+  - artifact: evtx.query
+    supports: c2_communication
+    weight: 0.55
+    independent_of: net.flows
+
+contradictions:
+  - artifact: net.flows
+    weight: 0.80
+    requires: "is_external == false"
+
+provenance: "SANS FOR572 Network Forensics; Zeek/tshark documentation; MITRE ATT&CK T1071; Mandiant IR playbook C2 detection"
+
+---
+
+rule: exfiltration_via_network
+emits: [exfiltration]
+signals:
+  - artifact: net.flows
+    supports: exfiltration
+    weight: 0.75
+    independent_of: net.flows
+    requires: "is_external == true"
+
+  - artifact: mem.netscan
+    supports: exfiltration
+    weight: 0.70
+    independent_of: net.flows
+
+  - artifact: mem.pslist
+    supports: exfiltration
+    weight: 0.60
+    independent_of: mem.netscan
+
+provenance: "SANS FOR572; MITRE ATT&CK T1041; CrowdStrike exfiltration detection patterns"

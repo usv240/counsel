@@ -1,0 +1,51 @@
+rule: process_injection_detected
+emits: [defense_evasion, payload_active]
+signals:
+  - artifact: mem.malfind
+    supports: defense_evasion
+    weight: 0.85
+    independent_of: mem.malfind
+
+  - artifact: mem.pslist
+    supports: payload_active
+    weight: 0.80
+    independent_of: mem.malfind
+
+  - artifact: mem.netscan
+    supports: payload_active
+    weight: 0.65
+    independent_of: mem.pslist
+
+  - artifact: yara.scan
+    supports: defense_evasion
+    weight: 0.75
+    independent_of: mem.malfind
+
+provenance: "SANS FOR508 Memory Forensics; Volatility malfind plugin docs; MITRE ATT&CK T1055; 'The Art of Memory Forensics' Ligh et al."
+
+---
+
+rule: hollow_process_detected
+emits: [defense_evasion, payload_active]
+signals:
+  - artifact: mem.pslist
+    supports: payload_active
+    weight: 0.75
+    independent_of: mem.pslist
+
+  - artifact: mem.malfind
+    supports: defense_evasion
+    weight: 0.90
+    independent_of: mem.malfind
+
+  - artifact: fs.stat_hash
+    supports: defense_evasion
+    weight: 0.55
+    independent_of: fs.stat_hash
+    requires: "exists == true"
+
+contradictions:
+  - artifact: yara.scan
+    weight: 0.50
+
+provenance: "SANS FOR508; Volatility community plugins; MITRE ATT&CK T1055.012 Process Hollowing"

@@ -1,0 +1,41 @@
+rule: system_discovery_activity
+emits: [discovery]
+signals:
+  - artifact: prefetch.run_record
+    supports: discovery
+    weight: 0.75
+    independent_of: prefetch.run_record
+
+  - artifact: evtx.query
+    supports: discovery
+    weight: 0.65
+    independent_of: evtx.query
+
+  - artifact: mem.pslist
+    supports: discovery
+    weight: 0.55
+    independent_of: mem.pslist
+
+provenance: "SANS FOR508; MITRE ATT&CK T1083 File/Dir Discovery, T1082 System Info Discovery; common attacker enumeration tooling"
+
+---
+
+rule: network_scanning_detected
+emits: [discovery, c2_communication]
+signals:
+  - artifact: net.flows
+    supports: discovery
+    weight: 0.80
+    independent_of: net.flows
+
+  - artifact: mem.netscan
+    supports: discovery
+    weight: 0.75
+    independent_of: net.flows
+
+  - artifact: mem.pslist
+    supports: discovery
+    weight: 0.60
+    independent_of: mem.netscan
+
+provenance: "SANS FOR572; MITRE ATT&CK T1046 Network Service Discovery; Zeek connection log analysis"

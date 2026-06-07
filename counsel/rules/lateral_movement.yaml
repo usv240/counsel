@@ -1,0 +1,60 @@
+rule: lateral_movement_via_psexec
+emits: [lateral_movement, payload_executed]
+signals:
+  - artifact: evtx.query
+    supports: lateral_movement
+    weight: 0.85
+    independent_of: evtx.query
+
+  - artifact: registry.run_keys
+    supports: lateral_movement
+    weight: 0.60
+    independent_of: evtx.query
+
+  - artifact: prefetch.run_record
+    supports: payload_executed
+    weight: 0.90
+    independent_of: prefetch.run_record
+
+  - artifact: fs.stat_hash
+    supports: payload_present
+    weight: 0.70
+    independent_of: fs.stat_hash
+
+  - artifact: net.flows
+    supports: lateral_movement
+    weight: 0.75
+    independent_of: evtx.query
+
+contradictions:
+  - artifact: evtx.query
+    weight: 0.70
+
+provenance: "SANS FOR508; Microsoft Windows Security Auditing; MITRE ATT&CK T1021; Mandiant APT lateral movement TTPs"
+
+---
+
+rule: lateral_movement_via_wmi
+emits: [lateral_movement, payload_executed]
+signals:
+  - artifact: evtx.query
+    supports: lateral_movement
+    weight: 0.80
+    independent_of: evtx.query
+
+  - artifact: prefetch.run_record
+    supports: payload_executed
+    weight: 0.75
+    independent_of: prefetch.run_record
+
+  - artifact: amcache.lookup
+    supports: payload_executed
+    weight: 0.55
+    independent_of: prefetch.run_record
+
+  - artifact: mem.pslist
+    supports: payload_active
+    weight: 0.70
+    independent_of: mem.pslist
+
+provenance: "SANS FOR508; WMI Attack Techniques — FireEye 2019; MITRE ATT&CK T1047"

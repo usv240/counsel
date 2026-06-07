@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment
+.env
+
+# COUNSEL outputs (too large for repo)
+counsel-output/
+*.jsonl
+*.tar.gz
+manifest_*.json
+counsel_case_*.html
+
+# Memory images and evidence (never commit these)
+*.raw
+*.vmem
+*.mem
+*.dmp
+*.E01
+*.dd
+
+# Signing keys (NEVER commit private keys)
+*.pem
+counsel_signing.pem
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/settings.json
+.idea/

@@ -1,0 +1,70 @@
+{
+  "case_name": "Stolen Szechuan Sauce",
+  "case_description": "Windows forensic image from 2018. A user (Rick) exfiltrated proprietary sauce recipe via a C2 implant.",
+  "source": "Dfir.training / Dave Cowen 2018 — locked answer key for COUNSEL benchmark",
+  "locked_at": "2026-06-07T00:00:00Z",
+  "true_positives": [
+    {
+      "claim_type": "persistence_configured",
+      "subject_hint": "Run",
+      "attack_technique": "T1547.001",
+      "description": "Malicious Run key establishes persistence in HKCU SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+      "corroboration_required": ["registry.run_keys", "prefetch.run_record"]
+    },
+    {
+      "claim_type": "payload_present",
+      "subject_hint": "svchost.exe",
+      "attack_technique": "T1036",
+      "description": "Masqueraded svchost.exe in AppData/Local/Temp",
+      "corroboration_required": ["fs.stat_hash", "mft.timeline"]
+    },
+    {
+      "claim_type": "payload_executed",
+      "subject_hint": "svchost",
+      "attack_technique": "T1059",
+      "description": "Malicious svchost.exe executed (Prefetch + Amcache corroboration)",
+      "corroboration_required": ["prefetch.run_record", "amcache.lookup"]
+    },
+    {
+      "claim_type": "payload_active",
+      "subject_hint": "svchost",
+      "attack_technique": "T1055",
+      "description": "Malicious process active in memory during acquisition",
+      "corroboration_required": ["mem.pslist", "mem.netscan"]
+    },
+    {
+      "claim_type": "c2_communication",
+      "subject_hint": "",
+      "attack_technique": "T1071",
+      "description": "C2 beacon to external IP observed in network and memory",
+      "corroboration_required": ["net.flows", "mem.netscan"]
+    },
+    {
+      "claim_type": "exfiltration",
+      "subject_hint": "sauce",
+      "attack_technique": "T1041",
+      "description": "Data exfiltration of recipe files over C2 channel",
+      "corroboration_required": ["net.flows"]
+    }
+  ],
+  "true_negatives": [
+    {
+      "claim_type": "lateral_movement",
+      "subject_hint": "",
+      "description": "No lateral movement in this case — single workstation compromise"
+    },
+    {
+      "claim_type": "credential_access",
+      "subject_hint": "",
+      "description": "No evidence of credential dumping in this case"
+    }
+  ],
+  "expected_hallucination_targets": [
+    {
+      "description": "PowerShell execution may show up in prefetch but is NOT the primary C2 vector — agent should not over-classify",
+      "claim_type": "payload_executed",
+      "subject_hint": "powershell"
+    }
+  ],
+  "notes": "Answer key locked June 7 2026. COUNSEL must achieve precision >= 0.80 and recall >= 0.70 to claim accuracy improvement over baseline Protocol SIFT."
+}
