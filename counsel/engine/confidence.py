@@ -13,7 +13,7 @@ from typing import Optional
 from .dsl import CompiledRule, ContradictionSpec, SignalSpec, evaluate_predicate
 from .model import ClaimState, EvidenceRef
 
-# Tunable thresholds — calibrated on the ground-truth case (see bench/)
+# Tunable thresholds - calibrated on the ground-truth case (see bench/)
 TAU_CORROBORATED = 0.80   # minimum noisy-OR support to reach CORROBORATED
 TAU_CONTRADICTED = 0.60   # minimum contradiction score to override
 MIN_INDEPENDENT_GROUPS = 2  # must come from >=2 independent artifact families
@@ -76,7 +76,7 @@ def compute_confidence(
             )
             active_signals.append(sr)
         else:
-            # Not yet observed — potential gap
+            # Not yet observed - potential gap
             sr = SignalResult(
                 signal=sig,
                 evidence_ref=None,
@@ -172,7 +172,7 @@ def _resolve_state(
     if not gap_signals:
         # No gaps left, still no support
         return ClaimState.UNRESOLVED
-    # Gaps remain — stay OBSERVED (agent should gather more)
+    # Gaps remain - stay OBSERVED (agent should gather more)
     return ClaimState.OBSERVED
 
 

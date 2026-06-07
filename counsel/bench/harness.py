@@ -1,5 +1,5 @@
 """
-COUNSEL Benchmark Harness — Ground-Truth Accuracy Evaluation.
+COUNSEL Benchmark Harness - Ground-Truth Accuracy Evaluation.
 
 Compares COUNSEL findings against a locked answer key for the
 'Stolen Szechuan Sauce' case (Dfir.training / Dave Cowen, 2018).
@@ -149,7 +149,7 @@ def evaluate(
         if inference_claims else 0.0
     )
     metrics.hallucinations_caught = [
-        f"{c.claim_type.value} — {c.subject[:60]} (support={c.support_score:.2f})"
+        f"{c.claim_type.value} - {c.subject[:60]} (support={c.support_score:.2f})"
         for c in unsupported_inference
     ]
 
@@ -232,7 +232,7 @@ def print_accuracy_report(metrics: AccuracyMetrics, case_name: str) -> None:
         f"[bold]Hallucination:[/bold] [yellow]{metrics.hallucination_rate:.1%}[/yellow]  "
         f"(INFERENCE claims unsupported by ground truth)\n"
         f"[bold]ECE:[/bold]        {metrics.ece:.4f}  "
-        f"(Expected Calibration Error — lower is better)\n\n"
+        f"(Expected Calibration Error - lower is better)\n\n"
         f"TP={metrics.true_positive_count}  FP={metrics.false_positive_count}  "
         f"FN={metrics.false_negative_count}",
         title="[bold]Accuracy Metrics[/bold]",

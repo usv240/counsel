@@ -1,4 +1,4 @@
-# Dataset Documentation — COUNSEL Benchmark
+# Dataset Documentation - COUNSEL Benchmark
 
 ## Primary Case: "Stolen Szechuan Sauce"
 
@@ -27,8 +27,8 @@ The "Stolen Szechuan Sauce" case image is publicly available for forensic traini
 | Amcache | Windows/AppCompat/Programs/Amcache.hve | T3: amcache_lookup |
 | $MFT | $MFT | T5: mft_timeline |
 | Event logs | Windows/System32/winevt/Logs/*.evtx | T10: evtx_query |
-| Memory image | (if included — check challenge archive) | T7, T8: mem_* |
-| PCAP | (if included — check challenge archive) | T9: net_flows |
+| Memory image | (if included - check challenge archive) | T7, T8: mem_* |
+| PCAP | (if included - check challenge archive) | T9: net_flows |
 
 ### Answer Key (Locked)
 
@@ -39,16 +39,16 @@ It was locked on 2026-06-07T00:00:00Z before running COUNSEL on the case.
 This prevents post-hoc rationalization of the benchmark results.
 
 **True Positives (expected CORROBORATED claims)**:
-- persistence_configured — Run key in HKCU
-- payload_present — Malicious svchost.exe in AppData/Local/Temp
-- payload_executed — Confirmed by Prefetch + Amcache (independent)
-- payload_active — Process in memory (if memory image available)
-- c2_communication — External IP in memory + PCAP
-- exfiltration — Data egress over C2 channel
+- persistence_configured - Run key in HKCU
+- payload_present - Malicious svchost.exe in AppData/Local/Temp
+- payload_executed - Confirmed by Prefetch + Amcache (independent)
+- payload_active - Process in memory (if memory image available)
+- c2_communication - External IP in memory + PCAP
+- exfiltration - Data egress over C2 channel
 
 **True Negatives (should NOT be CORROBORATED)**:
-- lateral_movement — Single workstation; no lateral movement evidence
-- credential_access — No credential dumping evidence
+- lateral_movement - Single workstation; no lateral movement evidence
+- credential_access - No credential dumping evidence
 
 ### Privacy and Legal
 
@@ -57,7 +57,7 @@ This is a publicly released forensic training case. The data is synthetic/fictio
 
 ---
 
-## Secondary Case: [TBD — Generality Proof]
+## Secondary Case: [TBD - Generality Proof]
 
 A second forensic case will be added to demonstrate COUNSEL generalizes beyond
 the Szechuan Sauce image. Candidates:
@@ -65,7 +65,7 @@ the Szechuan Sauce image. Candidates:
 - MagnetForensics CTF cases (publicly released)
 - Volatility Foundation memory samples
 
-The secondary case is used for generality — we run COUNSEL on it without an answer key
+The secondary case is used for generality - we run COUNSEL on it without an answer key
 and show the corroboration engine adapts to new TTPs without rule changes.
 
 ---

@@ -1,5 +1,5 @@
 """
-Corroboration Rule DSL — YAML loader, compiler, and validator.
+Corroboration Rule DSL - YAML loader, compiler, and validator.
 
 The DSL is a declarative YAML language that encodes DFIR corroboration knowledge.
 Bad rules fail at load time (fail-closed). Good rules produce an evaluator the
@@ -267,7 +267,7 @@ class RuleRegistry:
         return [r for r in self._rules.values() if claim_type in r.emits]
 
     def catalog_hash(self) -> str:
-        """Deterministic hash of the loaded rule set — pinned in the ledger genesis entry."""
+        """Deterministic hash of the loaded rule set - pinned in the ledger genesis entry."""
         import hashlib
         import json
         catalog = {

@@ -1,5 +1,5 @@
 """
-COUNSEL Rich Terminal UI — live investigation display for SIFT Workstation.
+COUNSEL Rich Terminal UI - live investigation display for SIFT Workstation.
 
 Terminal-first design (no browser needed). Shows:
   1. Live claim state updates with color-coded 5-state tokens
@@ -8,11 +8,11 @@ Terminal-first design (no browser needed). Shows:
   4. Ledger replay interface
 
 Claim-state color tokens:
-  OBSERVED      — dim white [OBS]
-  INFERENCE     — yellow    [INF]
-  CORROBORATED  — green     [COR]
-  CONTRADICTED  — red       [CON]
-  UNRESOLVED    — grey      [UNR]
+  OBSERVED      - dim white [OBS]
+  INFERENCE     - yellow    [INF]
+  CORROBORATED  - green     [COR]
+  CONTRADICTED  - red       [CON]
+  UNRESOLVED    - grey      [UNR]
 """
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def _state_badge(state: ClaimState) -> Text:
 
 def print_banner() -> None:
     console.print(Panel(
-        "[bold cyan]COUNSEL[/bold cyan] — Corroboration-First Autonomous DFIR Agent\n"
+        "[bold cyan]COUNSEL[/bold cyan] - Corroboration-First Autonomous DFIR Agent\n"
         "[dim]Every finding traces to evidence. Every ruling is earned.[/dim]\n"
         "[dim]SANS FIND EVIL! Hackathon 2026[/dim]",
         border_style="cyan",
@@ -172,7 +172,7 @@ def print_claims_table(claim_graph: ClaimGraph) -> None:
 
 
 def print_corroboration_graph(claim_graph: ClaimGraph) -> None:
-    """ASCII corroboration graph — shows relationships between claims."""
+    """ASCII corroboration graph - shows relationships between claims."""
     console.print(Rule("[cyan]Corroboration Graph[/cyan]"))
 
     if not claim_graph.claims:
@@ -194,7 +194,7 @@ def print_corroboration_graph(claim_graph: ClaimGraph) -> None:
         state_branch = tree.add(Text(f"{token} {state.value} ({len(claims)})", style=color))
         for claim in claims:
             claim_node = state_branch.add(
-                f"[dim]{claim.id}[/dim] {claim.claim_type.value} — {claim.subject[:40]}"
+                f"[dim]{claim.id}[/dim] {claim.claim_type.value} - {claim.subject[:40]}"
             )
             for ev in claim.evidence[:3]:
                 claim_node.add(
@@ -221,7 +221,7 @@ def print_verdict(claim_graph: ClaimGraph, elapsed_seconds: float, run_id: str) 
         for c in corroborated:
             technique = c.attack_technique.value if c.attack_technique else "ATT&CK TBD"
             console.print(
-                f"  [green][COR][/green] {c.claim_type.value} — {c.subject}\n"
+                f"  [green][COR][/green] {c.claim_type.value} - {c.subject}\n"
                 f"       ATT&CK: {technique}  |  Confidence: {c.support_score:.2f}\n"
                 f"       Evidence: {' + '.join(ev.tool for ev in c.evidence)}"
             )
@@ -233,8 +233,8 @@ def print_verdict(claim_graph: ClaimGraph, elapsed_seconds: float, run_id: str) 
         console.print("[yellow]INFERENCE (not yet corroborated):[/yellow]")
         for c in inference:
             console.print(
-                f"  [yellow][INF][/yellow] {c.claim_type.value} — {c.subject}\n"
-                f"       Support: {c.support_score:.2f} — needs independent corroboration"
+                f"  [yellow][INF][/yellow] {c.claim_type.value} - {c.subject}\n"
+                f"       Support: {c.support_score:.2f} - needs independent corroboration"
             )
 
     # Unresolved
@@ -243,7 +243,7 @@ def print_verdict(claim_graph: ClaimGraph, elapsed_seconds: float, run_id: str) 
         console.print()
         console.print("[grey50]UNRESOLVED:[/grey50]")
         for c in unresolved:
-            console.print(f"  [grey50][UNR][/grey50] {c.claim_type.value} — {c.subject}")
+            console.print(f"  [grey50][UNR][/grey50] {c.claim_type.value} - {c.subject}")
 
     # ATT&CK summary
     techniques = summary.get("attack_techniques", [])
@@ -262,7 +262,7 @@ def print_ledger_replay(replay_result: dict) -> None:
     verdict = replay_result.get("verdict", "UNKNOWN")
     color = "green" if match else "red"
     console.print(Panel(
-        f"[bold]Ledger Replay — seq={replay_result.get('seq')}[/bold]\n"
+        f"[bold]Ledger Replay - seq={replay_result.get('seq')}[/bold]\n"
         f"Tool: {replay_result.get('tool', 'unknown')}\n"
         f"Original SHA256:  {replay_result.get('original_sha256', '')[:32]}…\n"
         f"Replayed SHA256:  {replay_result.get('replayed_sha256', '')[:32]}…\n"

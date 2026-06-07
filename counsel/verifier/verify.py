@@ -6,7 +6,7 @@ This is the critical trust boundary: ledger chain is tamper-evident only if
 the final manifest is signed by a key the agent cannot access.
 
 Steps:
-  1. Re-hash the evidence image — confirms byte-identical (no spoliation).
+  1. Re-hash the evidence image - confirms byte-identical (no spoliation).
   2. Re-verify the entire hash chain from genesis.
   3. Sign the manifest with Ed25519 key stored in a file the agent cannot read.
   4. Write signed manifest alongside the ledger.
@@ -64,7 +64,7 @@ def generate_keypair(key_dir: Path) -> tuple[Path, Path]:
     """
     Generate an Ed25519 keypair and save to key_dir.
     Returns (private_key_path, public_key_path).
-    Called once during setup — private key must never be accessible to the agent.
+    Called once during setup - private key must never be accessible to the agent.
     """
     if not HAS_CRYPTOGRAPHY:
         raise RuntimeError("cryptography package required: pip install cryptography")
@@ -195,7 +195,7 @@ def verify_and_sign(
             result.chain_errors.append(f"Signing failed: {e}")
     else:
         result.chain_errors.append(
-            "Ed25519 signing skipped — cryptography not installed or key not found"
+            "Ed25519 signing skipped - cryptography not installed or key not found"
         )
 
     # Write manifest + signature
@@ -234,7 +234,7 @@ def export_case_package(
 def verify_package(package_path: Path, public_key_path: Path) -> dict:
     """
     Verify a case package exported by export_case_package().
-    Returns verification result dict — can be run by any third party.
+    Returns verification result dict - can be run by any third party.
     """
     import tempfile
     results: dict = {"package": str(package_path), "valid": False, "errors": []}

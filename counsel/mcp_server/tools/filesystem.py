@@ -3,7 +3,7 @@ T4: fs.stat_hash(path)
 Evidentiary meaning: payload_present + signature modifier
 
 Checks file existence, size, SHA256, timestamps, and Authenticode signature status.
-No external tool required — pure Python stat + hashlib.
+No external tool required - pure Python stat + hashlib.
 Signature check uses osslsigncode (SIFT) or openssl.
 """
 from __future__ import annotations
@@ -52,7 +52,7 @@ def _check_signature(file_path: Path, osslsigncode_bin: str, timeout: int) -> tu
     try:
         with open(file_path, "rb") as f:
             pe_bytes = f.read(4096)
-        # Look for PKCS#7 signature marker (0x2F7557EB) — rough heuristic
+        # Look for PKCS#7 signature marker (0x2F7557EB) - rough heuristic
         has_sig_marker = b"\x30\x82" in pe_bytes[128:]  # ASN.1 sequence
         return has_sig_marker, "signature-check-unavailable"
     except Exception:
@@ -145,7 +145,7 @@ def stat_hash(
     except PermissionError as e:
         return tool_error_result(
             "fs.stat_hash", run_id, artifact_path,
-            f"Permission denied: {e} — is the evidence mount read-only to the right user?"
+            f"Permission denied: {e} - is the evidence mount read-only to the right user?"
         )
     except OSError as e:
         return tool_error_result("fs.stat_hash", run_id, artifact_path, str(e))

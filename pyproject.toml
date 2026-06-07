@@ -8,7 +8,7 @@ packages = ["counsel"]
 [project]
 name = "counsel"
 version = "1.0.0"
-description = "COUNSEL — Corroboration-First Autonomous DFIR Agent"
+description = "COUNSEL - Corroboration-First Autonomous DFIR Agent"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"

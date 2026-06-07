@@ -1,6 +1,6 @@
 """
 T2: prefetch.run_record(name)
-Evidentiary meaning: payload_executed (strong — direct execution evidence)
+Evidentiary meaning: payload_executed (strong - direct execution evidence)
 
 Wraps Eric Zimmerman's PECmd.exe on SIFT Workstation.
 Parse-before-return: returns structured execution records, not raw PECmd output.

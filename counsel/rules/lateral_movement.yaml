@@ -57,4 +57,4 @@ signals:
     weight: 0.70
     independent_of: mem.pslist
 
-provenance: "SANS FOR508; WMI Attack Techniques — FireEye 2019; MITRE ATT&CK T1047"
+provenance: "SANS FOR508; WMI Attack Techniques - FireEye 2019; MITRE ATT&CK T1047"

@@ -1,4 +1,4 @@
-# COUNSEL — Corroboration-First Autonomous DFIR Agent
+# COUNSEL - Corroboration-First Autonomous DFIR Agent
 
 > "Every word traces to evidence. A senior analyst could sign this."
 
@@ -144,7 +144,7 @@ modifiers:
   - artifact: fs.stat_hash
     effect: benign_indicator
     requires: "signed == true"
-    note: "Signed binary — LOLBin abuse still possible"
+    note: "Signed binary - LOLBin abuse still possible"
 
 provenance: "SANS FOR500; MITRE ATT&CK T1547.001; Zimmerman PECmd + AmcacheParser"
 ```
@@ -192,15 +192,15 @@ Full report: `docs/accuracy-report.md`
 - [x] Architecture Diagram (`docs/architecture.md`)
 - [x] Written Description (`docs/written-description.md`)
 - [x] Dataset Documentation (`docs/dataset-docs.md`)
-- [ ] Accuracy Report (`docs/accuracy-report.md`) — after SIFT run
+- [ ] Accuracy Report (`docs/accuracy-report.md`) - after SIFT run
 - [x] Try-It-Out Instructions (this README Quick Start)
-- [ ] Agent Execution Logs — after SIFT run
+- [ ] Agent Execution Logs - after SIFT run
 
 ---
 
 ## License
 
-MIT License — Copyright 2026 COUNSEL Contributors
+MIT License - Copyright 2026 COUNSEL Contributors
 
 Built with: Claude Opus 4.8 (Anthropic), MCP, SANS SIFT Workstation, Eric Zimmerman Tools,
 Volatility 3, tshark, Rich, Jinja2, cryptography (Ed25519)

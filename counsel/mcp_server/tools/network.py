@@ -3,7 +3,7 @@ T9: net.flows(filter)
 Evidentiary meaning: C2_communication, exfiltration (corroborates memory netscan)
 
 Wraps tshark (Wireshark CLI) or Zeek log parser on SIFT.
-Parses PCAP/PCAPNG files into flow-level records — never dumps raw packet bytes.
+Parses PCAP/PCAPNG files into flow-level records - never dumps raw packet bytes.
 """
 from __future__ import annotations
 

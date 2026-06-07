@@ -3,7 +3,7 @@ T5: mft.timeline(filter)
 Evidentiary meaning: timeline backbone (MACB timestamps for all activity)
 
 Wraps MFTECmd.exe (Zimmerman) or analyzeMFT (Python fallback) on SIFT.
-Returns unified MACB timeline entries — filtered to avoid context explosion.
+Returns unified MACB timeline entries - filtered to avoid context explosion.
 """
 from __future__ import annotations
 

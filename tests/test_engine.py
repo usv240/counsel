@@ -1,5 +1,5 @@
 """
-Unit tests for the corroboration engine — no forensic tools required.
+Unit tests for the corroboration engine - no forensic tools required.
 Tests the DSL compiler, confidence model, and state resolution logic.
 """
 import pytest

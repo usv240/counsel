@@ -43,6 +43,6 @@ modifiers:
   - artifact: fs.stat_hash
     effect: benign_indicator
     requires: "signed == true"
-    note: "Signed binary — LOLBin or signed-proxy abuse remains possible; never resolves benign alone"
+    note: "Signed binary - LOLBin or signed-proxy abuse remains possible; never resolves benign alone"
 
 provenance: "SANS FOR500 Module 5; MITRE ATT&CK T1547.001; Zimmerman PECmd + AmcacheParser docs; Mandiant M-Trends 2023 persistence techniques"

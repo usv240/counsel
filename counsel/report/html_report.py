@@ -2,13 +2,13 @@
 COUNSEL Static HTML Case File Generator.
 
 Produces a self-contained HTML file (no web server required) from the
-ClaimGraph and ledger. Works offline — judges can open it in any browser.
+ClaimGraph and ledger. Works offline - judges can open it in any browser.
 
 Four views (tab-based, pure HTML/CSS/JS):
-  1. Executive Summary — verdict, ATT&CK techniques, key timeline
-  2. Evidence Trace — every claim linked to its exact ledger entry and tool call
-  3. Corroboration Graph — visual claim graph (SVG/CSS, no external libraries)
-  4. Audit Ledger — full hash-chained ledger in a searchable table
+  1. Executive Summary - verdict, ATT&CK techniques, key timeline
+  2. Evidence Trace - every claim linked to its exact ledger entry and tool call
+  3. Corroboration Graph - visual claim graph (SVG/CSS, no external libraries)
+  4. Audit Ledger - full hash-chained ledger in a searchable table
 
 WCAG-AA accessible: high contrast, semantic HTML, no color-only information.
 """
@@ -44,7 +44,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>COUNSEL Case File — {{ run_id }}</title>
+  <title>COUNSEL Case File - {{ run_id }}</title>
   <style>
     :root {
       --bg: #0d1117; --surface: #161b22; --border: #30363d;
@@ -216,7 +216,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       {% set color_class = state_class(claim.state) %}
       <div>
         <span class="state-badge {{ color_class }}">{{ claim.state.value[:3] }}</span>
-        &nbsp;<strong>{{ claim.claim_type.value }}</strong> — {{ claim.subject[:60] }}
+        &nbsp;<strong>{{ claim.claim_type.value }}</strong> - {{ claim.subject[:60] }}
         <br>
         {% for ev in claim.evidence %}
         &nbsp;&nbsp;&nbsp;└─ <span style="color:var(--blue)">{{ ev.tool }}</span>
@@ -280,9 +280,9 @@ def _entry_summary(entry: dict) -> str:
             f"(support={payload.get('support', 0):.2f})"
         )
     elif etype == "agent_decision":
-        return f"[iter {payload.get('iteration', '')}] {payload.get('action', '')} — {payload.get('rationale', '')[:60]}"
+        return f"[iter {payload.get('iteration', '')}] {payload.get('action', '')} - {payload.get('rationale', '')[:60]}"
     elif etype == "halt":
-        return f"HALT: {payload.get('reason', '')} — {payload.get('corroborated_claims', 0)} corroborated"
+        return f"HALT: {payload.get('reason', '')} - {payload.get('corroborated_claims', 0)} corroborated"
     return json.dumps(payload)[:80]
 
 

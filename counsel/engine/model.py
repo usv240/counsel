@@ -1,6 +1,6 @@
 """
 Core data model: Claim, EvidenceRef, ClaimState, StateChange, ClaimGraph.
-The engine (not the LLM) owns all state transitions — this is the anti-hallucination core.
+The engine (not the LLM) owns all state transitions - this is the anti-hallucination core.
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ class ClaimState(str, Enum):
     CORROBORATED = "CORROBORATED"
     # Some support but below corroboration threshold
     INFERENCE = "INFERENCE"
-    # Conflicting evidence — a source actively contradicts this claim
+    # Conflicting evidence - a source actively contradicts this claim
     CONTRADICTED = "CONTRADICTED"
     # Bounded search exhausted; insufficient evidence to decide
     UNRESOLVED = "UNRESOLVED"
@@ -53,7 +53,7 @@ class AttackTechnique(str, Enum):
 
 @dataclass
 class EvidenceRef:
-    """Pointer from a claim to its exact forensic artifact — traceable to byte level."""
+    """Pointer from a claim to its exact forensic artifact - traceable to byte level."""
     ledger_seq: int
     tool: str
     artifact_path: str
@@ -70,7 +70,7 @@ class EvidenceRef:
 
 @dataclass
 class StateChange:
-    """Records every ruling revision — powers the 'self-correction' demo moment."""
+    """Records every ruling revision - powers the 'self-correction' demo moment."""
     ts: datetime
     from_state: ClaimState
     to_state: ClaimState
@@ -162,7 +162,7 @@ class Claim:
 
 @dataclass
 class Entity:
-    """A forensic entity referenced by claims — file, process, IP, registry key."""
+    """A forensic entity referenced by claims - file, process, IP, registry key."""
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     entity_type: str = "file"   # file | process | registry_key | ip | domain
     name: str = ""

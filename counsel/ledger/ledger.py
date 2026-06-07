@@ -27,7 +27,7 @@ GENESIS_HASH = "0" * 64   # sentinel for the first entry
 
 
 class LedgerEntry:
-    """Canonical ledger entry format. Never use __dict__ directly — use to_dict()."""
+    """Canonical ledger entry format. Never use __dict__ directly - use to_dict()."""
 
     def __init__(
         self,
@@ -128,7 +128,7 @@ class Ledger:
         tool_catalog_hash: str,
         rule_set_hash: str,
     ) -> LedgerEntry:
-        """Write the genesis entry — pins evidence hash, catalog, and rule set."""
+        """Write the genesis entry - pins evidence hash, catalog, and rule set."""
         return self._append("genesis", {
             "evidence_sha256_in": evidence_sha256,
             "tool_catalog_hash": tool_catalog_hash,
@@ -185,7 +185,7 @@ class Ledger:
         tool_chosen: Optional[str] = None,
         claim_id: Optional[str] = None,
     ) -> LedgerEntry:
-        """Record an agent decision (WHY it chose each next tool — audit trail)."""
+        """Record an agent decision (WHY it chose each next tool - audit trail)."""
         return self._append("agent_decision", {
             "iteration": iteration,
             "phase": phase,
@@ -203,7 +203,7 @@ class Ledger:
         corroborated_claims: int,
         elapsed_seconds: float,
     ) -> LedgerEntry:
-        """Record graceful halt — captures termination condition."""
+        """Record graceful halt - captures termination condition."""
         return self._append("halt", {
             "reason": reason,
             "iteration": iteration,
@@ -241,7 +241,7 @@ class Ledger:
     def verify_chain(self) -> tuple[bool, list[str]]:
         """
         Recompute the full hash chain from genesis. Returns (valid, errors).
-        Called by the Verifier process — not by the agent.
+        Called by the Verifier process - not by the agent.
         """
         errors: list[str] = []
         prev_hash = GENESIS_HASH
@@ -275,16 +275,16 @@ class Ledger:
 
                     if raw["seq"] != seq_expected:
                         errors.append(
-                            f"Line {lineno}: seq gap — expected {seq_expected}, got {raw['seq']}"
+                            f"Line {lineno}: seq gap - expected {seq_expected}, got {raw['seq']}"
                         )
                     if raw["prev_hash"] != prev_hash:
                         errors.append(
-                            f"seq {raw['seq']}: prev_hash mismatch — "
+                            f"seq {raw['seq']}: prev_hash mismatch - "
                             f"expected {prev_hash[:16]}…, got {raw['prev_hash'][:16]}…"
                         )
                     if entry.entry_hash != raw.get("entry_hash", ""):
                         errors.append(
-                            f"seq {raw['seq']}: hash mismatch — "
+                            f"seq {raw['seq']}: hash mismatch - "
                             f"computed {entry.entry_hash[:16]}…, stored {raw.get('entry_hash', '')[:16]}…"
                         )
 

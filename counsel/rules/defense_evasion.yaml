@@ -64,6 +64,6 @@ modifiers:
   - artifact: fs.stat_hash
     effect: benign_indicator
     requires: "signed == true"
-    note: "Legitimate Microsoft binary used as LOLBin — signed status does NOT indicate benign"
+    note: "Legitimate Microsoft binary used as LOLBin - signed status does NOT indicate benign"
 
 provenance: "LOLBAS project lolbas-project.github.io; MITRE ATT&CK T1218; SANS FOR508 LOLBin chapter"

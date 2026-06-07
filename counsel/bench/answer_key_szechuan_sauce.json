@@ -1,7 +1,7 @@
 {
   "case_name": "Stolen Szechuan Sauce",
   "case_description": "Windows forensic image from 2018. A user (Rick) exfiltrated proprietary sauce recipe via a C2 implant.",
-  "source": "Dfir.training / Dave Cowen 2018 — locked answer key for COUNSEL benchmark",
+  "source": "Dfir.training / Dave Cowen 2018 - locked answer key for COUNSEL benchmark",
   "locked_at": "2026-06-07T00:00:00Z",
   "true_positives": [
     {
@@ -51,7 +51,7 @@
     {
       "claim_type": "lateral_movement",
       "subject_hint": "",
-      "description": "No lateral movement in this case — single workstation compromise"
+      "description": "No lateral movement in this case - single workstation compromise"
     },
     {
       "claim_type": "credential_access",
@@ -61,7 +61,7 @@
   ],
   "expected_hallucination_targets": [
     {
-      "description": "PowerShell execution may show up in prefetch but is NOT the primary C2 vector — agent should not over-classify",
+      "description": "PowerShell execution may show up in prefetch but is NOT the primary C2 vector - agent should not over-classify",
       "claim_type": "payload_executed",
       "subject_hint": "powershell"
     }

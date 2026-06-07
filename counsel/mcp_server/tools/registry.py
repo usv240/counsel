@@ -135,7 +135,7 @@ def run_keys(
     if not hive_paths:
         return tool_error_result(
             "registry.run_keys", run_id, str(evidence_root),
-            "hive_paths is required — provide paths to registry hive files"
+            "hive_paths is required - provide paths to registry hive files"
         )
 
     all_records: list[dict] = []
@@ -152,7 +152,7 @@ def run_keys(
 
         parsed = False
 
-        # Try RECmd (Zimmerman tools — preferred on SIFT)
+        # Try RECmd (Zimmerman tools - preferred on SIFT)
         if recmd_bin:
             for key_path in RUN_KEY_PATHS:
                 stdout, stderr, rc = run_tool_subprocess(
@@ -194,7 +194,7 @@ def run_keys(
             quality -= 0.2
 
     if not all_records and not warnings:
-        warnings.append("No run key records found — hive may be clean or parsers unavailable")
+        warnings.append("No run key records found - hive may be clean or parsers unavailable")
 
     records, truncated = truncate_records(all_records, max_records, warnings)
 

@@ -4,7 +4,7 @@
 
 ```
                     +------------------+
-                    |  Trusted Launcher |  (holds signing key — agent never sees it)
+                    |  Trusted Launcher |  (holds signing key - agent never sees it)
                     |  - mounts evidence|
                     |    read-only      |
                     |  - computes hash_in|
@@ -49,7 +49,7 @@
 
 ## Trust Boundaries
 
-### B1 — Evidence/Agent Boundary
+### B1 - Evidence/Agent Boundary
 The agent reaches evidence ONLY through typed MCP function calls.
 There is no file-read tool, no shell tool, no directory-listing tool.
 Even if the agent's reasoning were compromised, it has no path to read
@@ -58,15 +58,15 @@ arbitrary bytes from the evidence image.
 **Enforcement**: MCP server exposes 10 typed functions. Agent is configured
 with ONLY those tools. No `bash` tool. No `read_file` tool.
 
-### B2 — Ledger/Signing Boundary
+### B2 - Ledger/Signing Boundary
 The agent can APPEND to the ledger (via MCP server's ledger integration)
 but CANNOT SIGN. The Ed25519 private key lives in the Launcher/Verifier
-only — the agent process never has it in its environment.
+only - the agent process never has it in its environment.
 
 **Enforcement**: Signing happens in the Verifier, a separate process that
 runs AFTER agent exit. Signed manifest states: chain_valid + evidence_intact.
 
-### B3 — Agent/Host Boundary
+### B3 - Agent/Host Boundary
 The agent runtime has no shell, no arbitrary exec, no write mount.
 Even a fully successful prompt injection attack has no dangerous primitive
 to call. Capability isolation is the primary defense.

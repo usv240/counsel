@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>COUNSEL — Corroboration-First Autonomous DFIR Agent</title>
+  <title>COUNSEL - Corroboration-First Autonomous DFIR Agent</title>
   <meta name="description" content="COUNSEL is an autonomous DFIR agent that never asserts a finding unless two independent sources agree. Court-grade evidence integrity. No hallucinations.">
   <style>
     :root {
@@ -180,7 +180,7 @@
     <h2 class="section-title">An autonomous DFIR agent built on one principle: earn the verdict.</h2>
     <p class="section-lead">
       Adversaries reach domain control in under 8 minutes. Defenders are still pulling up their toolkit.
-      COUNSEL closes the gap — with the discipline that makes findings stand up in court.
+      COUNSEL closes the gap - with the discipline that makes findings stand up in court.
     </p>
     <div class="cards">
       <div class="card">
@@ -198,7 +198,7 @@
       <div class="card">
         <div class="card-icon">🛡️</div>
         <h3>Architectural Safety</h3>
-        <p>The agent has no shell access, no file-write access, no arbitrary exec. Evidence is mounted read-only. Even a fully successful prompt injection has no dangerous primitive to call — capability isolation is the real defense.</p>
+        <p>The agent has no shell access, no file-write access, no arbitrary exec. Evidence is mounted read-only. Even a fully successful prompt injection has no dangerous primitive to call - capability isolation is the real defense.</p>
         <span class="badge">RT1–RT7 red-team tested</span>
       </div>
       <div class="card">
@@ -210,13 +210,13 @@
       <div class="card">
         <div class="card-icon">🔍</div>
         <h3>Self-Correction on Camera</h3>
-        <p>When gap detection finds a high-weight independent signal that contradicts an earlier INFERENCE, the agent announces the ruling change explicitly. Not scripted — it emerges from the corroboration engine.</p>
+        <p>When gap detection finds a high-weight independent signal that contradicts an earlier INFERENCE, the agent announces the ruling change explicitly. Not scripted - it emerges from the corroboration engine.</p>
         <span class="badge">demo beat 4: live ruling change</span>
       </div>
       <div class="card">
         <div class="card-icon">🌐</div>
         <h3>Open DSL for Community</h3>
-        <p>Corroboration rules are a declarative YAML DSL — cite your DFIR source, define which independent tools must agree, and ship new rules without touching Python. Community-extensible by design.</p>
+        <p>Corroboration rules are a declarative YAML DSL - cite your DFIR source, define which independent tools must agree, and ship new rules without touching Python. Community-extensible by design.</p>
         <span class="badge">rules/*.yaml</span>
       </div>
     </div>
@@ -227,7 +227,7 @@
 <section>
   <div class="section-inner">
     <div class="section-tag">The 5-State Claim Model</div>
-    <h2 class="section-title">Every finding has exactly one state. The engine decides — not the LLM.</h2>
+    <h2 class="section-title">Every finding has exactly one state. The engine decides - not the LLM.</h2>
     <p class="section-lead">
       COUNSEL maintains strict epistemic discipline. The corroboration engine computes state
       deterministically from evidence. The agent reads state but cannot assert CORROBORATED unilaterally.
@@ -276,22 +276,22 @@
     <div class="terminal">
       <div class="terminal-bar">
         <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
-        <span class="terminal-title">SIFT Workstation — counsel investigate /mnt/evidence</span>
+        <span class="terminal-title">SIFT Workstation - counsel investigate /mnt/evidence</span>
       </div>
       <div class="terminal-body">
 <pre>
-<span class="t-cyan t-bold">COUNSEL — Corroboration-First Autonomous DFIR Agent</span>
+<span class="t-cyan t-bold">COUNSEL - Corroboration-First Autonomous DFIR Agent</span>
 <span class="t-dim">Run ID: a3f7e2b9  |  Evidence: /mnt/evidence  |  Rules: 17</span>
 
 <span class="t-yellow">━━━ PHASE: TRIAGE ━━━</span>
 <span class="t-dim">iter 01</span> <span class="t-blue">registry_run_keys</span><span class="t-dim">(hive_paths=["Windows/System32/config/SOFTWARE", "Users/Rick/NTUSER.DAT"])</span>
 <span class="t-dim">  -> seq=1  records=3  quality=100%</span>
-  <span class="t-dim">CLAIM [c3d1]</span> persistence_configured — NTUSER...Run  <span class="t-yellow">[INF]</span>  support=0.95
+  <span class="t-dim">CLAIM [c3d1]</span> persistence_configured - NTUSER...Run  <span class="t-yellow">[INF]</span>  support=0.95
 
 <span class="t-dim">iter 02</span> <span class="t-blue">prefetch_run_record</span><span class="t-dim">(name="svchost.exe")</span>
 <span class="t-dim">  -> seq=2  records=1  quality=100%</span>
-  <span class="t-dim">CLAIM [e8a4]</span> payload_executed — svchost.exe       <span class="t-yellow">[INF]</span>  support=0.92
-  <span class="t-dim">  Rationale: Strong execution evidence — but Prefetch and Amcache share</span>
+  <span class="t-dim">CLAIM [e8a4]</span> payload_executed - svchost.exe       <span class="t-yellow">[INF]</span>  support=0.92
+  <span class="t-dim">  Rationale: Strong execution evidence - but Prefetch and Amcache share</span>
   <span class="t-dim">  the OS execution subsystem. I need an independent source.</span>
 
 <span class="t-dim">iter 03</span> <span class="t-blue">amcache_lookup</span><span class="t-dim">(name="svchost.exe")</span>
@@ -303,14 +303,14 @@
 <span class="t-purple">└───────────────────────────────────────────────────────────────┘</span>
 
 <span class="t-dim">iter 07</span> <span class="t-blue">net_flows</span><span class="t-dim">(exclude_local=True)</span>  +  <span class="t-blue">mem_netscan</span><span class="t-dim">()</span>
-<span class="t-green">[COR] c2_communication</span> — 185.220.101.47:443 (memory + PCAP agree)
+<span class="t-green">[COR] c2_communication</span> - 185.220.101.47:443 (memory + PCAP agree)
 
 <span class="t-yellow">━━━ COUNSEL VERDICT ━━━</span>
 <span class="t-green">[COR]</span> persistence_configured   T1547.001  confidence=0.95
 <span class="t-green">[COR]</span> payload_executed          T1059      confidence=0.97
 <span class="t-green">[COR]</span> payload_active            T1055      confidence=0.90
 <span class="t-green">[COR]</span> c2_communication          T1071      confidence=0.88
-<span class="t-yellow">[INF]</span> exfiltration              T1041      (single source — PCAP only)
+<span class="t-yellow">[INF]</span> exfiltration              T1041      (single source - PCAP only)
 
 <span class="t-dim">INTEGRITY: IN=3a7f… OUT=3a7f… MATCH ✓  |  Ledger signed Ed25519  |  8 iterations / 12.3s</span>
 <span class="t-dim">Replay any finding: counsel replay counsel-ledger.jsonl 3</span>
@@ -320,7 +320,7 @@
 
     <!-- Architecture -->
     <div style="margin-top: 56px;">
-      <h3 style="font-size: 1.1rem; margin-bottom: 24px; color: var(--dim);">Architecture — Trust Boundaries</h3>
+      <h3 style="font-size: 1.1rem; margin-bottom: 24px; color: var(--dim);">Architecture - Trust Boundaries</h3>
       <div class="arch">
         <div class="arch-box trust">
           <h4>Trusted Launcher</h4>
@@ -357,7 +357,7 @@
       <div class="criterion">
         <div class="criterion-num">01</div>
         <h3>Autonomous Execution</h3>
-        <p>Forms hypotheses, sequences tools like a senior analyst, recovers from failures. Multiple genuine self-corrections — not scripted. The ruling change happens on camera, driven by the engine.</p>
+        <p>Forms hypotheses, sequences tools like a senior analyst, recovers from failures. Multiple genuine self-corrections - not scripted. The ruling change happens on camera, driven by the engine.</p>
         <span class="wow">Live ruling change in demo beat 4</span>
       </div>
       <div class="criterion">
@@ -375,7 +375,7 @@
       <div class="criterion">
         <div class="criterion-num">04</div>
         <h3>Constraint Implementation</h3>
-        <p>Read-only mount + typed MCP (no shell) + externally-signed ledger — all architectural. Published threat model. RT1–RT7 red-team tests documented failing safely. Prompt injection planted in evidence.</p>
+        <p>Read-only mount + typed MCP (no shell) + externally-signed ledger - all architectural. Published threat model. RT1–RT7 red-team tests documented failing safely. Prompt injection planted in evidence.</p>
         <span class="wow">RT3: injection in evidence content</span>
       </div>
       <div class="criterion">
@@ -407,7 +407,7 @@
     <div class="terminal" style="margin-bottom: 32px;">
       <div class="terminal-bar">
         <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
-        <span class="terminal-title">SIFT Workstation — Setup</span>
+        <span class="terminal-title">SIFT Workstation - Setup</span>
       </div>
       <div class="terminal-body"><pre>
 <span class="t-dim"># 1. Clone and install</span>
@@ -446,7 +446,7 @@ counsel redteam /mnt/evidence
       <div class="card">
         <div class="card-icon">🔧</div>
         <h3>Write a Custom Rule</h3>
-        <p>Add a <code>.yaml</code> file to <code>rules/</code>. Define signals, weights, and provenance. The DSL validates at load time — bad rules fail closed.</p>
+        <p>Add a <code>.yaml</code> file to <code>rules/</code>. Define signals, weights, and provenance. The DSL validates at load time - bad rules fail closed.</p>
       </div>
       <div class="card">
         <div class="card-icon">🎓</div>
@@ -464,13 +464,13 @@ counsel redteam /mnt/evidence
     <h2 class="section-title">Benchmarked against a locked ground-truth answer key.</h2>
     <p class="section-lead">
       We ran COUNSEL and baseline Protocol SIFT on the "Stolen Szechuan Sauce" case.
-      Results are honest — including what we got wrong and how we caught it.
+      Results are honest - including what we got wrong and how we caught it.
     </p>
     <div class="cards">
       <div class="card">
         <div class="card-icon">📊</div>
         <h3>Quantified Metrics</h3>
-        <p>Precision, recall, false positive rate, and hallucination rate — all computed against the locked answer key and published in the accuracy report.</p>
+        <p>Precision, recall, false positive rate, and hallucination rate - all computed against the locked answer key and published in the accuracy report.</p>
         <span class="badge">docs/accuracy-report.md</span>
       </div>
       <div class="card">
@@ -482,7 +482,7 @@ counsel redteam /mnt/evidence
       <div class="card">
         <div class="card-icon">🚨</div>
         <h3>Hallucinations We Caught</h3>
-        <p>Every INFERENCE claim the agent produced but the answer key did not support — shown honestly in the accuracy report. This directly answers why this hackathon exists.</p>
+        <p>Every INFERENCE claim the agent produced but the answer key did not support - shown honestly in the accuracy report. This directly answers why this hackathon exists.</p>
         <span class="badge">docs/accuracy-report.md#hallucinations</span>
       </div>
     </div>
@@ -492,7 +492,7 @@ counsel redteam /mnt/evidence
 <!-- ── FOOTER ── -->
 <footer>
   <p>
-    COUNSEL — SANS FIND EVIL! Hackathon 2026 &nbsp;|&nbsp;
+    COUNSEL - SANS FIND EVIL! Hackathon 2026 &nbsp;|&nbsp;
     <a href="https://github.com/ujwalv098/counsel">GitHub</a> &nbsp;|&nbsp;
     MIT License &nbsp;|&nbsp;
     Built with Claude Opus 4.8 + MCP + SIFT Workstation

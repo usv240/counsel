@@ -59,10 +59,10 @@ modifiers:
   - artifact: fs.stat_hash
     effect: benign_indicator
     requires: "signed == true"
-    note: "Microsoft-signed binary — consider LOLBin abuse (e.g., regsvr32, mshta, certutil)"
+    note: "Microsoft-signed binary - consider LOLBin abuse (e.g., regsvr32, mshta, certutil)"
 
   - artifact: yara.scan
     effect: suspicion
-    note: "YARA match on known malware rule — strong malware identity indicator"
+    note: "YARA match on known malware rule - strong malware identity indicator"
 
-provenance: "SANS FOR408; MFT forensics — William Ballenthin; YARA documentation"
+provenance: "SANS FOR408; MFT forensics - William Ballenthin; YARA documentation"

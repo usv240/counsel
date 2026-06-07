@@ -1,5 +1,5 @@
 """
-COUNSEL Launcher — Trusted Entry Point.
+COUNSEL Launcher - Trusted Entry Point.
 
 The launcher is the only process that:
   1. Holds the evidence path and verifies the read-only mount
@@ -34,7 +34,7 @@ from ..ledger.ledger import Ledger
 
 app = typer.Typer(
     name="counsel",
-    help="COUNSEL — Corroboration-First Autonomous DFIR Agent",
+    help="COUNSEL - Corroboration-First Autonomous DFIR Agent",
     no_args_is_help=True,
 )
 console = Console()
@@ -47,7 +47,7 @@ logger = logging.getLogger("counsel.launcher")
 
 
 def _hash_evidence(evidence_path: Path) -> str:
-    """SHA256 of evidence root. Slow for large images — uses streaming."""
+    """SHA256 of evidence root. Slow for large images - uses streaming."""
     h = hashlib.sha256()
     if evidence_path.is_file():
         with open(evidence_path, "rb") as f:
@@ -69,9 +69,9 @@ def _verify_read_only(evidence_path: Path) -> bool:
     try:
         probe.write_text("probe")
         probe.unlink()
-        return False  # Writable — should fail
+        return False  # Writable - should fail
     except (PermissionError, OSError):
-        return True   # Read-only — correct
+        return True   # Read-only - correct
 
 
 @app.command()
@@ -168,7 +168,7 @@ def investigate(
             f"Verification: {'PASSED' if ver_result.passed else 'FAILED'}[/]"
         )
     else:
-        console.print("[yellow]Signing key not provided — ledger unsigned (use --signing-key for court-grade)[/yellow]")
+        console.print("[yellow]Signing key not provided - ledger unsigned (use --signing-key for court-grade)[/yellow]")
 
     # Generate HTML Case File
     ledger = Ledger(ledger_path, run_id)
@@ -261,7 +261,7 @@ def verify_package(
 
 # ─── Allow direct invocation ─────────────────────────────────────────────────
 
-import json  # noqa: E402 — needed for verify_package command above
+import json  # noqa: E402 - needed for verify_package command above
 
 if __name__ == "__main__":
     app()

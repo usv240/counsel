@@ -55,7 +55,7 @@ def sanitize_string(s: object, max_len: int = 512) -> str:
     """
     Strip control characters and cap length.
     This is the injection barrier: attacker-controlled artifact content
-    becomes a bounded, control-char-free string — never executable.
+    becomes a bounded, control-char-free string - never executable.
     """
     cleaned = re.sub(r"[\x00-\x1f\x7f]", " ", str(s or ""))
     return cleaned[:max_len]
@@ -73,7 +73,7 @@ def run_tool_subprocess(
     """
     Execute an external forensic tool. Returns (stdout, stderr, returncode).
     This is the only place in the MCP server that spawns a subprocess.
-    The agent has no access to this — it calls typed MCP functions only.
+    The agent has no access to this - it calls typed MCP functions only.
     """
     try:
         result = subprocess.run(

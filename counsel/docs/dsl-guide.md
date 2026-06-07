@@ -2,7 +2,7 @@
 
 COUNSEL's corroboration rules are a declarative YAML DSL.
 No Python required. Drop a `.yaml` file in the `rules/` directory
-and reload the agent. Bad rules fail at load time — they never silently break.
+and reload the agent. Bad rules fail at load time - they never silently break.
 
 ## Anatomy of a Rule
 
@@ -27,7 +27,7 @@ modifiers:                    # context that changes interpretation (optional)
     requires: "signed == true"
     note: "LOLBin abuse possible"
 
-provenance: "SANS FOR500 Module 3; MITRE ATT&CK T1547.001"  # REQUIRED — cite your source
+provenance: "SANS FOR500 Module 3; MITRE ATT&CK T1547.001"  # REQUIRED - cite your source
 ```
 
 ## Step 1: Pick your claim type
@@ -67,9 +67,9 @@ it needs two or more INDEPENDENT signal groups.
 Ask yourself: "If this source is wrong, would the other source also be wrong?"
 
 Examples of independent pairs:
-- `prefetch.run_record` + `amcache.lookup` — INDEPENDENT (different OS subsystems)
-- `mem.pslist` + `fs.stat_hash` — INDEPENDENT (memory vs. disk)
-- `net.flows` + `mem.netscan` — INDEPENDENT (PCAP vs. memory tables)
+- `prefetch.run_record` + `amcache.lookup` - INDEPENDENT (different OS subsystems)
+- `mem.pslist` + `fs.stat_hash` - INDEPENDENT (memory vs. disk)
+- `net.flows` + `mem.netscan` - INDEPENDENT (PCAP vs. memory tables)
 
 Examples of DEPENDENT pairs (DON'T call them independent):
 - `prefetch.run_record` + `prefetch.run_record` (same tool twice)
@@ -139,7 +139,7 @@ modifiers:
   - artifact: fs.stat_hash
     effect: benign_indicator
     requires: "signed == true"
-    note: "Microsoft-signed scheduled tasks exist — check task content"
+    note: "Microsoft-signed scheduled tasks exist - check task content"
 
 provenance: "SANS FOR508; Windows Task Scheduler forensics; MITRE ATT&CK T1053.005; EventID 4698 (task created)"
 ```
@@ -159,7 +159,7 @@ r.load_directory(Path('counsel/rules'))
 print('Rules loaded:', len(r.all_rules()))
 "
 
-# Run investigation — your rule is active
+# Run investigation - your rule is active
 counsel investigate /mnt/evidence
 ```
 

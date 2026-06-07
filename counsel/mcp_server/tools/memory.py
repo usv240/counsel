@@ -1,10 +1,10 @@
 """
-T7: mem.pslist()     — payload_active (strong)
-T7: mem.netscan()    — C2/exfil corroboration
-T8: mem.malfind()    — injected code detection
+T7: mem.pslist()     - payload_active (strong)
+T7: mem.netscan()    - C2/exfil corroboration
+T8: mem.malfind()    - injected code detection
 
 All three wrap Volatility 3 on SIFT Workstation.
-Memory artifacts are independent of disk artifacts — corroboration across
+Memory artifacts are independent of disk artifacts - corroboration across
 disk+memory is the strongest possible evidence chain.
 """
 from __future__ import annotations

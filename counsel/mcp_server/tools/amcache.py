@@ -4,7 +4,7 @@ Evidentiary meaning: payload_executed (medium, independent of Prefetch)
 
 Wraps Eric Zimmerman's AmcacheParser.exe on SIFT Workstation.
 Independence note: Amcache is written by the Windows OS kernel loader, completely
-independent of the Prefetch subsystem — a corroborating signal with a different
+independent of the Prefetch subsystem - a corroborating signal with a different
 code path means a single compromised artifact cannot fake both.
 """
 from __future__ import annotations
@@ -126,7 +126,7 @@ def lookup(
     ledger_seq: int = 0,
 ) -> ParseResult:
     """
-    T3: Look up executables in Amcache.hve — independent of Prefetch.
+    T3: Look up executables in Amcache.hve - independent of Prefetch.
 
     name: optional executable name filter (e.g. "svchost.exe")
     sha1: optional SHA1 hash filter

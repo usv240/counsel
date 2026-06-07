@@ -1,10 +1,10 @@
 """
-COUNSEL MCP Server — the trust boundary between forensic tools and the agent.
+COUNSEL MCP Server - the trust boundary between forensic tools and the agent.
 
 Architecture guarantees (enforced here, not in prompts):
   B1: Agent reaches evidence ONLY through typed MCP functions (no shell, no file read)
   B2: Every call is logged to the ledger before returning to agent
-  B3: Agent cannot write, execute, or sign — MCP server is read-only
+  B3: Agent cannot write, execute, or sign - MCP server is read-only
 
 Uses FastMCP for clean tool registration. All tools are typed functions.
 """
@@ -26,7 +26,7 @@ logger = logging.getLogger("counsel.mcp_server")
 
 mcp = FastMCP(
     "counsel",
-    description="COUNSEL — Corroboration-First DFIR MCP Server. "
+    description="COUNSEL - Corroboration-First DFIR MCP Server. "
     "All tools are read-only, parse-before-return, and append to the audit ledger.",
 )
 
@@ -61,7 +61,7 @@ def registry_run_keys(
     hive_paths: list[str],
 ) -> dict:
     """
-    T1 — registry.run_keys: Extract Run/RunOnce persistence registry keys.
+    T1 - registry.run_keys: Extract Run/RunOnce persistence registry keys.
 
     Args:
         hive_paths: List of registry hive paths relative to the evidence root.
@@ -92,7 +92,7 @@ def prefetch_run_record(
     name: Optional[str] = None,
 ) -> dict:
     """
-    T2 — prefetch.run_record: Parse Windows Prefetch files for execution evidence.
+    T2 - prefetch.run_record: Parse Windows Prefetch files for execution evidence.
 
     Args:
         name: Optional executable name filter (e.g., "svchost.exe").
@@ -100,7 +100,7 @@ def prefetch_run_record(
 
     Returns typed records:
         exe, hash, run_count, last_run, all_runs, volume, pf_path
-    Evidentiary claim: payload_executed (strong — direct execution evidence)
+    Evidentiary claim: payload_executed (strong - direct execution evidence)
     Independence: written by Prefetch subsystem, independent of Amcache
     """
     result = prefetch.run_record(
@@ -123,7 +123,7 @@ def amcache_lookup(
     sha1: Optional[str] = None,
 ) -> dict:
     """
-    T3 — amcache.lookup: Look up executables in Amcache.hve.
+    T3 - amcache.lookup: Look up executables in Amcache.hve.
 
     Args:
         name: Optional executable name filter.
@@ -154,7 +154,7 @@ def fs_stat_hash(
     file_path: str,
 ) -> dict:
     """
-    T4 — fs.stat_hash: Stat and SHA256-hash a file in the evidence image.
+    T4 - fs.stat_hash: Stat and SHA256-hash a file in the evidence image.
 
     Args:
         file_path: Path relative to evidence root (e.g., "Users/Rick/AppData/Local/Temp/evil.exe")
@@ -162,7 +162,7 @@ def fs_stat_hash(
     Returns one record:
         path, exists, size, sha256, mtime, atime, ctime, mode, signed, signer
     Evidentiary claim: payload_present (exists=True) or contradiction (exists=False)
-    Note: signed=True is a modifier — LOLBin/signed-proxy abuse still possible
+    Note: signed=True is a modifier - LOLBin/signed-proxy abuse still possible
     """
     result = filesystem.stat_hash(
         run_id=_config.run_id,
@@ -184,7 +184,7 @@ def mft_timeline(
     mft_path: Optional[str] = None,
 ) -> dict:
     """
-    T5 — mft.timeline: Extract NTFS MFT timeline entries.
+    T5 - mft.timeline: Extract NTFS MFT timeline entries.
 
     Args:
         path_filter: Optional path substring filter (e.g., "Temp", "Users\\Rick").
@@ -219,7 +219,7 @@ def yara_scan(
     rules_path: Optional[str] = None,
 ) -> dict:
     """
-    T6 — yara.scan: Scan a file or directory with YARA rules.
+    T6 - yara.scan: Scan a file or directory with YARA rules.
 
     Args:
         target_path: Path relative to evidence root.
@@ -250,7 +250,7 @@ def mem_pslist(
     name_filter: Optional[str] = None,
 ) -> dict:
     """
-    T7a — mem.pslist: List processes from a memory image.
+    T7a - mem.pslist: List processes from a memory image.
 
     Args:
         image_path:  Path to memory image relative to evidence root (auto-detected if None).
@@ -258,7 +258,7 @@ def mem_pslist(
 
     Returns typed records:
         pid, ppid, name, path, create_time, exit_time, threads, handles
-    Evidentiary claim: payload_active (strong — live process in memory)
+    Evidentiary claim: payload_active (strong - live process in memory)
     Independence: memory artifacts are independent of disk artifacts
     """
     result = memory.pslist(
@@ -283,7 +283,7 @@ def mem_netscan(
     exclude_local: bool = True,
 ) -> dict:
     """
-    T7b — mem.netscan: Scan memory for network connections.
+    T7b - mem.netscan: Scan memory for network connections.
 
     Args:
         image_path:    Path to memory image (auto-detected if None).
@@ -316,7 +316,7 @@ def mem_malfind(
     pid_filter: Optional[str] = None,
 ) -> dict:
     """
-    T8 — mem.malfind: Find injected memory regions using Volatility malfind.
+    T8 - mem.malfind: Find injected memory regions using Volatility malfind.
 
     Args:
         image_path: Path to memory image (auto-detected if None).
@@ -350,7 +350,7 @@ def net_flows(
     pcap_path: Optional[str] = None,
 ) -> dict:
     """
-    T9 — net.flows: Extract network flows from PCAP evidence.
+    T9 - net.flows: Extract network flows from PCAP evidence.
 
     Args:
         src_filter:   Optional source IP substring.
@@ -392,7 +392,7 @@ def evtx_query(
     evtx_path: Optional[str] = None,
 ) -> dict:
     """
-    T10 — evtx.query: Query Windows Event Logs.
+    T10 - evtx.query: Query Windows Event Logs.
 
     Args:
         channel:    Log channel: Security | System | Application | PowerShell | TaskScheduler | WMI
@@ -434,7 +434,7 @@ def init_server(config: ServerConfig) -> None:
         sys.exit(1)
     _config = config
     logger.info(
-        "COUNSEL MCP Server initialized — evidence_root=%s run_id=%s",
+        "COUNSEL MCP Server initialized - evidence_root=%s run_id=%s",
         config.evidence_root, config.run_id,
     )
 

@@ -1,11 +1,11 @@
 """
-COUNSEL Agent Loop — Claude Opus 4.8 + MCP tools + corroboration engine.
+COUNSEL Agent Loop - Claude Opus 4.8 + MCP tools + corroboration engine.
 
 State machine: INIT -> TRIAGE -> [PROPOSE -> VERIFY -> GAP? GATHER : RULE] -> SYNTHESIZE -> SIGN
 This is where Criterion 1 (Autonomous Execution Quality) is won.
 
 Key design choices:
-  - Claude Opus 4.8 with adaptive thinking (no budget_tokens — deprecated)
+  - Claude Opus 4.8 with adaptive thinking (no budget_tokens - deprecated)
   - Streaming for long responses (prevents timeout on multi-iteration analysis)
   - Temperature 0 for the corroboration engine; higher for analyst narration
   - MAX_ITERATIONS enforced here, not in the prompt (architectural bound)
@@ -126,7 +126,7 @@ class CounselLoop:
         lines = []
         for c in self.claim_graph.claims:
             lines.append(
-                f"  [{c.id}] {c.claim_type.value} — {c.subject} "
+                f"  [{c.id}] {c.claim_type.value} - {c.subject} "
                 f"STATE={c.state.value} support={c.support_score:.2f}"
             )
         return "\n".join(lines)
@@ -276,7 +276,7 @@ class CounselLoop:
                 mcp_tools = self._build_mcp_tools_for_api(mcp_tools_raw.tools)
 
                 logger.info(
-                    "COUNSEL starting — run_id=%s tools=%d rules=%d",
+                    "COUNSEL starting - run_id=%s tools=%d rules=%d",
                     self.config.run_id, len(mcp_tools), len(self.rule_registry.all_rules()),
                 )
 
@@ -346,7 +346,7 @@ class CounselLoop:
                             raw_result = mcp_result.content[0].text if mcp_result.content else "{}"
                             result_dict = json.loads(raw_result)
                         except Exception as e:
-                            logger.error("Tool call failed: %s — %s", tool_name, e)
+                            logger.error("Tool call failed: %s - %s", tool_name, e)
                             result_dict = {"error": str(e), "tool": tool_name, "records": [], "seq": 0}
 
                         # Update claim states from this result
@@ -377,7 +377,7 @@ class CounselLoop:
                     # Check if all claims are settled (early termination)
                     open_claims = [c for c in self.claim_graph.claims if c.needs_investigation]
                     if not open_claims and self.claim_graph.claims:
-                        logger.info("All claims settled — terminating at iteration %d", iteration)
+                        logger.info("All claims settled - terminating at iteration %d", iteration)
                         self.ledger.append_halt(
                             reason="all_claims_settled",
                             iteration=iteration,
@@ -399,7 +399,7 @@ class CounselLoop:
 
         elapsed = time.monotonic() - self._start_time
         logger.info(
-            "COUNSEL complete — elapsed=%.1fs iterations=%d corroborated=%d unresolved=%d",
+            "COUNSEL complete - elapsed=%.1fs iterations=%d corroborated=%d unresolved=%d",
             elapsed,
             iteration,
             len(self.claim_graph.corroborated_claims()),
