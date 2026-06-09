@@ -1,0 +1,29 @@
+[
+  {
+    "pid": "2104",
+    "name": "wupd.exe",
+    "address": "0x00400000",
+    "size": "110592",
+    "protection": "PAGE_EXECUTE_READWRITE",
+    "vad_tag": "VadS",
+    "hexdump_preview": "4d5a9000 03000000 04000000 ffff0000 b8000000 00000000 40000000 00000000"
+  },
+  {
+    "pid": "1488",
+    "name": "explorer.exe",
+    "address": "0x02a80000",
+    "size": "4096",
+    "protection": "PAGE_EXECUTE_READWRITE",
+    "vad_tag": "VadS",
+    "hexdump_preview": "fc4889d2 4889e5 57 5141544156 4883ec20 e8a50000 00"
+  },
+  {
+    "pid": "2388",
+    "name": "svchost32.exe",
+    "address": "0x00600000",
+    "size": "65536",
+    "protection": "PAGE_EXECUTE_READWRITE",
+    "vad_tag": "VadS",
+    "hexdump_preview": "4d5a9000 03000000 04000000 ffff0000 b8000000 00000000 40000000 00000000"
+  }
+]

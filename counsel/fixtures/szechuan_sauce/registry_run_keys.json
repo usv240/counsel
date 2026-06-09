@@ -1,0 +1,32 @@
+[
+  {
+    "hive": "HKCU",
+    "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+    "value_name": "WindowsUpdate",
+    "value_data": "C:\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+    "value_type": "REG_SZ",
+    "last_write": "2017-10-04T14:22:11Z",
+    "sid": "S-1-5-21-1234567890-1234567890-1234567890-1001",
+    "username": "Rick"
+  },
+  {
+    "hive": "HKLM",
+    "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+    "value_name": "SecurityHealthSystray",
+    "value_data": "C:\\Windows\\System32\\SecurityHealthSystray.exe",
+    "value_type": "REG_SZ",
+    "last_write": "2017-09-14T03:00:00Z",
+    "sid": "",
+    "username": ""
+  },
+  {
+    "hive": "HKCU",
+    "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+    "value_name": "SauceCheck",
+    "value_data": "C:\\Users\\Rick\\AppData\\Roaming\\svchost32.exe -silent",
+    "value_type": "REG_SZ",
+    "last_write": "2017-10-04T14:23:05Z",
+    "sid": "S-1-5-21-1234567890-1234567890-1234567890-1001",
+    "username": "Rick"
+  }
+]

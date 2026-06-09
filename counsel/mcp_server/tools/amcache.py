@@ -19,6 +19,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -135,6 +136,10 @@ def lookup(
         path, sha1, name, first_seen, company, description,
         product_version, file_size, linked_pe
     """
+    fixture = load_fixture_result("amcache_lookup", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     amcache_path = _find_amcache(evidence_root)
     if not amcache_path:
         return tool_error_result(

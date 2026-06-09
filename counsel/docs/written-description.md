@@ -1,5 +1,21 @@
 # COUNSEL - Written Description (Devpost Submission)
 
+## What I Built
+
+COUNSEL (Corroboration-First Autonomous DFIR Agent) is an autonomous digital forensics agent
+that refuses to assert a finding as confirmed until two or more independent forensic artifact
+families agree - mathematically, not by LLM confidence. It runs on SIFT Workstation, wraps
+10 real forensic tools (Volatility, YARA, tshark, Zimmerman tools, python-evtx) as a
+custom MCP server (Pattern 2 - the architecture the hackathon judges rated "most sound"),
+and produces a hash-chained, Ed25519-signed audit ledger after every investigation.
+
+**Relationship to Protocol SIFT:** COUNSEL extends the hackathon's own Protocol SIFT framework.
+Where Protocol SIFT demonstrates how Claude agents CAN interface with SIFT forensic tools via MCP,
+COUNSEL answers the harder question: how do you stop the agent from hallucinating findings?
+The corroboration engine, 5-state claim model, and declarative rule DSL are built on top of
+the MCP tool-use pattern that Protocol SIFT defines - not as a competing approach but as a
+principled constraint layer above it.
+
 ## One-Sentence Summary
 COUNSEL is a corroboration-first autonomous DFIR agent that never asserts a finding as confirmed unless two independent forensic sources agree, every decision is hash-chain auditable, and the evidence image is cryptographically verified to be unmodified.
 
@@ -57,6 +73,56 @@ Adversarial content in evidence (maliciously named files, registry values contai
 - **Constraint Implementation**: Published threat model. RT1–RT7 red-team tests documented failing safely. Prompt injection planted inside evidence (RT3) - the architecture holds because the agent has no dangerous primitives.
 - **Audit Trail**: Every finding → ledger entry → tool call → raw output SHA256 → artifact path + offset. `counsel replay` re-runs any finding on demand. Exportable signed case package.
 - **Usability**: One-command setup. Terminal-first (SIFT-native Rich TUI). Static HTML Case File (no web server). Analyst Training Mode. Community DSL with 5-minute onboarding guide.
+
+## How I Built It
+
+COUNSEL took 3 weeks of solo development:
+
+1. **Corroboration engine** (`counsel/engine/`) - noisy-OR confidence math with independence
+   group partitioning. Fail-closed on malformed rules. All state transitions logged.
+
+2. **Custom MCP server** (`counsel/mcp_server/`) - 10 typed forensic tools, parse-before-return
+   (control chars stripped, strings bounded to 512 chars), read-only evidence access,
+   hash-chained ledger append. Never exposes raw tool output to the LLM.
+
+3. **Declarative rule DSL** (`counsel/rules/`) - YAML corroboration rules that cite
+   forensic provenance (SANS course, Zimmerman docs, ATT&CK). Community-extensible.
+
+4. **Claude Opus 4.8 agent loop** (`counsel/agent/`) - adaptive thinking, MCP-only tools,
+   no shell, no write access.
+
+5. **Fixture system** (`counsel/fixtures/`) - pre-recorded Szechuan Sauce tool outputs.
+   Full investigation demo without SIFT Workstation. Set COUNSEL_FIXTURE_DIR and run.
+
+6. **FastAPI dashboard** (`counsel serve`) - live claims board, SSE agent stream, audit
+   ledger viewer, ATT&CK Navigator layer export.
+
+## Challenges
+
+The hardest problem was the independence group definition. Early versions let the agent
+call the same tool twice on different parameters and count both calls as independent
+signal - which let it CORROBORATE a claim from a single artifact family. The fix was
+partitioning signals by `independent_of` field and taking max weight per partition,
+not sum. This is the core anti-hallucination mechanism and took 3 iterations to get right.
+
+The second hard problem was prompt injection resistance. Adversarial content in evidence
+(filenames designed to override LLM instructions) would pass through raw tool output and
+reach the agent context. Parse-before-return addresses this at the MCP layer - not by
+filtering LLM output but by never letting raw evidence bytes reach the LLM.
+
+## What I Learned
+
+The key insight: you cannot make an LLM agent trustworthy by prompting it to be careful.
+Trust comes from architectural constraints. The agent cannot overclaim because the
+corroboration engine controls state. It cannot exfiltrate evidence because it has no
+write primitive. It cannot tamper with the audit trail because it cannot sign. These
+properties are enforced by process isolation, not by prompts.
+
+## What's Next
+
+- Community corroboration rule registry (like YARA rules but for DFIR logic)
+- Calibration-aware confidence reporting (ECE metric per rule, not just per case)
+- Expansion to Linux artifacts (ext4 MFT equivalent, bash history, auditd logs)
 
 ## Demo Narrative (5 minutes)
 

@@ -1,0 +1,14 @@
+[
+  {
+    "path": "Users/Rick/AppData/Local/Temp/wupd.exe",
+    "exists": true,
+    "size": 114688,
+    "sha256": "3a7f2e1d9c4b8a5f6e0d3c2b1a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1",
+    "mtime": "2017-10-04T14:21:53Z",
+    "atime": "2017-10-04T18:44:03Z",
+    "ctime": "2017-10-04T14:21:53Z",
+    "mode": "0o100644",
+    "signed": false,
+    "signer": ""
+  }
+]

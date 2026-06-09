@@ -1,6 +1,12 @@
 """
 Parse-before-return infrastructure.
 
+Fixture mode: set COUNSEL_FIXTURE_DIR to a directory containing pre-recorded
+tool output JSON files (e.g. counsel/fixtures/szechuan_sauce/). When set, each
+tool loads its fixture file instead of calling the real binary. This enables
+full end-to-end demonstration without SIFT Workstation installed.
+
+
 Every MCP tool MUST parse raw forensic tool output into typed records before
 returning to the LLM. Raw forensic output (multi-MB, attacker-controlled)
 never enters the agent context.
@@ -13,6 +19,8 @@ Two guarantees:
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import re
 import subprocess
 from dataclasses import dataclass, field
@@ -103,6 +111,42 @@ def truncate_records(
         )
         return records[:max_records], True
     return records, False
+
+
+def load_fixture_result(tool_name: str, run_id: str, artifact_path: str) -> "ParseResult | None":
+    """
+    Load pre-recorded tool output from COUNSEL_FIXTURE_DIR.
+
+    Returns None when fixture mode is not active or the file is absent,
+    so callers fall through to the real tool binary unchanged.
+
+    File must be a JSON array of record dicts in the same schema the tool
+    would produce after parse-before-return. See counsel/fixtures/README.md.
+    """
+    fixture_dir = os.environ.get("COUNSEL_FIXTURE_DIR", "")
+    if not fixture_dir:
+        return None
+    fixture_path = Path(fixture_dir) / f"{tool_name}.json"
+    if not fixture_path.exists():
+        return None
+    try:
+        raw_bytes = fixture_path.read_bytes()
+        records = json.loads(raw_bytes)
+        if not isinstance(records, list):
+            return None
+        return ParseResult(
+            tool=tool_name,
+            run_id=run_id,
+            seq=0,
+            records=records,
+            artifact_path=str(fixture_path),
+            offset=0,
+            raw_output_sha256=hash_raw(raw_bytes),
+            parse_quality=1.0,
+            warnings=["[FIXTURE] Pre-recorded output. Replace with a real SIFT run to get live results."],
+        )
+    except Exception:
+        return None
 
 
 def tool_error_result(

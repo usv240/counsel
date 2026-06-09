@@ -1,0 +1,54 @@
+[
+  {
+    "ts": "2017-10-04T14:22:21Z",
+    "src": "192.168.1.105",
+    "sport": "49321",
+    "dst": "185.220.101.47",
+    "dport": "4444",
+    "proto": "TCP",
+    "bytes": 487233,
+    "sni": "",
+    "http_host": "",
+    "dns_query": "",
+    "is_external": true
+  },
+  {
+    "ts": "2017-10-04T14:23:15Z",
+    "src": "192.168.1.105",
+    "sport": "49388",
+    "dst": "185.220.101.47",
+    "dport": "8080",
+    "proto": "TCP",
+    "bytes": 4398046,
+    "sni": "",
+    "http_host": "update.windowscdn.net",
+    "dns_query": "",
+    "is_external": true
+  },
+  {
+    "ts": "2017-10-04T14:19:30Z",
+    "src": "192.168.1.105",
+    "sport": "49299",
+    "dst": "185.220.101.47",
+    "dport": "443",
+    "proto": "TCP",
+    "bytes": 128044,
+    "sni": "update.windowscdn.net",
+    "http_host": "",
+    "dns_query": "",
+    "is_external": true
+  },
+  {
+    "ts": "2017-10-04T14:19:28Z",
+    "src": "192.168.1.105",
+    "sport": "49296",
+    "dst": "192.168.1.1",
+    "dport": "53",
+    "proto": "UDP",
+    "bytes": 128,
+    "sni": "",
+    "http_host": "",
+    "dns_query": "update.windowscdn.net",
+    "is_external": false
+  }
+]

@@ -230,15 +230,15 @@
 <div class="stats-bar">
   <div class="stats-inner">
     <div class="stat">
-      <div class="num">10</div>
+      <div class="num" id="stat-tools">10</div>
       <div class="lbl">Forensic Tools <button class="tip" data-tip="10 real forensic tools: registry parser, prefetch reader, Amcache parser, file system hasher, MFT timeline builder, YARA scanner, Volatility memory tools (pslist, netscan, malfind), network flow analyzer, and EVTX event log reader.">i</button></div>
     </div>
     <div class="stat">
-      <div class="num">16</div>
+      <div class="num" id="stat-rules">16</div>
       <div class="lbl">Corroboration Rules <button class="tip" data-tip="Each rule defines which forensic tools must independently agree before a claim is confirmed. Rules are written in plain YAML and can be extended by the community without writing Python.">i</button></div>
     </div>
     <div class="stat">
-      <div class="num">5</div>
+      <div class="num" id="stat-states">5</div>
       <div class="lbl">Claim States <button class="tip" data-tip="Every finding lives in one of 5 states: OBSERVED, INFERENCE, CORROBORATED, CONTRADICTED, or UNRESOLVED. A deterministic corroboration engine - not the AI - decides which state applies based on evidence weights.">i</button></div>
     </div>
     <div class="stat">
@@ -251,6 +251,20 @@
     </div>
   </div>
 </div>
+<script>
+(function() {
+  var apiBase = window.location.origin;
+  fetch(apiBase + '/api/stats')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(d) {
+      if (!d) return;
+      if (d.tool_count) document.getElementById('stat-tools').textContent = d.tool_count;
+      if (d.rule_count) document.getElementById('stat-rules').textContent = d.rule_count;
+      if (d.state_model) document.getElementById('stat-states').textContent = d.state_model;
+    })
+    .catch(function() {});
+})();
+</script>
 
 <!-- WHAT -->
 <section id="what">

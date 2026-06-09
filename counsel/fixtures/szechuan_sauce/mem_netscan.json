@@ -1,0 +1,35 @@
+[
+  {
+    "pid": "2104",
+    "name": "wupd.exe",
+    "laddr": "192.168.1.105",
+    "lport": "49321",
+    "raddr": "185.220.101.47",
+    "rport": "4444",
+    "state": "ESTABLISHED",
+    "proto": "TCP",
+    "create_time": "2017-10-04T14:22:21Z"
+  },
+  {
+    "pid": "2388",
+    "name": "svchost32.exe",
+    "laddr": "192.168.1.105",
+    "lport": "49388",
+    "raddr": "185.220.101.47",
+    "rport": "8080",
+    "state": "ESTABLISHED",
+    "proto": "TCP",
+    "create_time": "2017-10-04T14:23:15Z"
+  },
+  {
+    "pid": "1488",
+    "name": "explorer.exe",
+    "laddr": "192.168.1.105",
+    "lport": "49211",
+    "raddr": "23.45.67.89",
+    "rport": "443",
+    "state": "ESTABLISHED",
+    "proto": "TCP",
+    "create_time": "2017-10-04T09:10:04Z"
+  }
+]

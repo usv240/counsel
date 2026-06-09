@@ -18,6 +18,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -132,6 +133,10 @@ def run_keys(
     Typed output per record:
         hive, key, value_name, command, last_write, suspicion_score
     """
+    fixture = load_fixture_result("registry_run_keys", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     if not hive_paths:
         return tool_error_result(
             "registry.run_keys", run_id, str(evidence_root),

@@ -1,0 +1,59 @@
+[
+  {
+    "executable": "WUPD.EXE",
+    "path": "\\VOLUME{01d2f1e3a4b5c6d7-e8f9a0b1}\\USERS\\RICK\\APPDATA\\LOCAL\\TEMP\\WUPD.EXE",
+    "run_count": 7,
+    "last_run": "2017-10-04T18:44:03Z",
+    "previous_runs": [
+      "2017-10-04T14:22:18Z",
+      "2017-10-04T15:01:44Z",
+      "2017-10-04T16:30:22Z",
+      "2017-10-04T17:15:09Z",
+      "2017-10-04T17:58:31Z",
+      "2017-10-04T18:20:47Z"
+    ],
+    "volume_serial": "01d2f1e3a4b5c6d7",
+    "prefetch_hash": "A3E2F891",
+    "file_size": 114688,
+    "loaded_dlls": [
+      "NTDLL.DLL",
+      "KERNEL32.DLL",
+      "KERNELBASE.DLL",
+      "WS2_32.DLL",
+      "ADVAPI32.DLL",
+      "MSVCRT.DLL"
+    ]
+  },
+  {
+    "executable": "SVCHOST32.EXE",
+    "path": "\\VOLUME{01d2f1e3a4b5c6d7-e8f9a0b1}\\USERS\\RICK\\APPDATA\\ROAMING\\SVCHOST32.EXE",
+    "run_count": 3,
+    "last_run": "2017-10-04T18:40:11Z",
+    "previous_runs": [
+      "2017-10-04T14:23:10Z",
+      "2017-10-04T17:00:55Z"
+    ],
+    "volume_serial": "01d2f1e3a4b5c6d7",
+    "prefetch_hash": "B7C1D204",
+    "file_size": 98304,
+    "loaded_dlls": [
+      "NTDLL.DLL",
+      "KERNEL32.DLL",
+      "KERNELBASE.DLL",
+      "WS2_32.DLL",
+      "WININET.DLL",
+      "CRYPT32.DLL"
+    ]
+  },
+  {
+    "executable": "CMD.EXE",
+    "path": "\\VOLUME{01d2f1e3a4b5c6d7-e8f9a0b1}\\WINDOWS\\SYSTEM32\\CMD.EXE",
+    "run_count": 12,
+    "last_run": "2017-10-04T18:30:05Z",
+    "previous_runs": [],
+    "volume_serial": "01d2f1e3a4b5c6d7",
+    "prefetch_hash": "7C0D2A3F",
+    "file_size": 278528,
+    "loaded_dlls": ["NTDLL.DLL", "KERNEL32.DLL", "KERNELBASE.DLL"]
+  }
+]

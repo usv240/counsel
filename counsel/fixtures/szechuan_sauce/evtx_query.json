@@ -1,0 +1,84 @@
+[
+  {
+    "channel": "Security",
+    "eid": 4624,
+    "ts": "2017-10-04T08:02:14Z",
+    "description": "An account was successfully logged on",
+    "computer": "MORTY-PC",
+    "fields": {
+      "SubjectUserName": "SYSTEM",
+      "TargetUserName": "Rick",
+      "TargetDomainName": "MORTY-PC",
+      "LogonType": "2",
+      "IpAddress": "-",
+      "ProcessName": "C:\\Windows\\System32\\winlogon.exe"
+    }
+  },
+  {
+    "channel": "Security",
+    "eid": 4688,
+    "ts": "2017-10-04T14:22:18Z",
+    "description": "A new process has been created",
+    "computer": "MORTY-PC",
+    "fields": {
+      "SubjectUserName": "Rick",
+      "NewProcessName": "C:\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+      "ParentProcessName": "C:\\Windows\\explorer.exe",
+      "CommandLine": "C:\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+      "TokenElevationType": "%%1938"
+    }
+  },
+  {
+    "channel": "Security",
+    "eid": 4688,
+    "ts": "2017-10-04T14:23:10Z",
+    "description": "A new process has been created",
+    "computer": "MORTY-PC",
+    "fields": {
+      "SubjectUserName": "Rick",
+      "NewProcessName": "C:\\Users\\Rick\\AppData\\Roaming\\svchost32.exe",
+      "ParentProcessName": "C:\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+      "CommandLine": "C:\\Users\\Rick\\AppData\\Roaming\\svchost32.exe -silent",
+      "TokenElevationType": "%%1938"
+    }
+  },
+  {
+    "channel": "Security",
+    "eid": 4688,
+    "ts": "2017-10-04T14:23:22Z",
+    "description": "A new process has been created",
+    "computer": "MORTY-PC",
+    "fields": {
+      "SubjectUserName": "Rick",
+      "NewProcessName": "C:\\Windows\\System32\\cmd.exe",
+      "ParentProcessName": "C:\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+      "CommandLine": "cmd.exe /c dir C:\\Users\\Rick\\Desktop\\ && copy C:\\Users\\Rick\\Desktop\\SzechuanSauce_Formula_ULTRA_SECRET.docx C:\\Users\\Rick\\AppData\\Local\\Temp\\",
+      "TokenElevationType": "%%1936"
+    }
+  },
+  {
+    "channel": "Security",
+    "eid": 4663,
+    "ts": "2017-10-04T14:23:25Z",
+    "description": "An attempt was made to access an object",
+    "computer": "MORTY-PC",
+    "fields": {
+      "SubjectUserName": "Rick",
+      "ObjectName": "C:\\Users\\Rick\\Desktop\\SzechuanSauce_Formula_ULTRA_SECRET.docx",
+      "AccessMask": "0x1",
+      "ProcessName": "C:\\Windows\\System32\\cmd.exe"
+    }
+  },
+  {
+    "channel": "Security",
+    "eid": 4698,
+    "ts": "2017-10-04T14:25:00Z",
+    "description": "A scheduled task was created",
+    "computer": "MORTY-PC",
+    "fields": {
+      "SubjectUserName": "Rick",
+      "TaskName": "\\Microsoft\\Windows\\UpdateOrchestrator\\WindowsUpdate",
+      "TaskContent": "wupd.exe /background"
+    }
+  }
+]

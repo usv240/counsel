@@ -18,6 +18,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -137,6 +138,10 @@ def timeline(
     Typed output per record:
         ts, path, action, MACB, source, entry_num, is_deleted, file_size
     """
+    fixture = load_fixture_result("mft_timeline", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     mft = _find_mft(evidence_root, mft_path)
     if not mft:
         return tool_error_result(

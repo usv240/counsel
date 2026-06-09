@@ -242,6 +242,29 @@ def keygen(
 
 
 @app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", help="Host to bind the web server to"),
+    port: int = typer.Option(8000, help="Port to listen on"),
+    output_dir: Path = typer.Option(Path("./counsel-output"), help="Directory containing completed runs"),
+) -> None:
+    """Start the COUNSEL web dashboard and API server."""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]uvicorn not installed. Run: pip install uvicorn[/red]")
+        raise typer.Exit(1)
+
+    os.environ.setdefault("COUNSEL_OUTPUT_DIR", str(output_dir))
+    console.print(f"[green]COUNSEL Dashboard:[/green] http://{host}:{port}/")
+    console.print(f"[green]API Stats:        [/green] http://{host}:{port}/api/stats")
+    console.print(f"[green]API Cases:        [/green] http://{host}:{port}/api/cases")
+    if os.environ.get("COUNSEL_FIXTURE_DIR"):
+        console.print(f"[purple]Fixture mode:     {os.environ['COUNSEL_FIXTURE_DIR']}[/purple]")
+    console.print("[dim]Press Ctrl+C to stop.[/dim]")
+    uvicorn.run("counsel.web.app:app", host=host, port=port, reload=False)
+
+
+@app.command()
 def verify_package(
     package: Path = typer.Argument(..., help="Path to .tar.gz case package"),
     public_key: Path = typer.Argument(..., help="Path to Ed25519 public key PEM"),

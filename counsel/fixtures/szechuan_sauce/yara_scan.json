@@ -1,0 +1,40 @@
+[
+  {
+    "rule": "Meterpreter_Reverse_TCP",
+    "target": "Users/Rick/AppData/Local/Temp/wupd.exe",
+    "strings": [
+      {
+        "offset": 16384,
+        "var": "metsrv_magic",
+        "snippet": "4d5a9000 03000000 04000000"
+      },
+      {
+        "offset": 32768,
+        "var": "reverse_tcp_sig",
+        "snippet": "ws2_32 connect WSAStartup"
+      }
+    ]
+  },
+  {
+    "rule": "Suspicious_PE_In_Temp",
+    "target": "Users/Rick/AppData/Local/Temp/wupd.exe",
+    "strings": [
+      {
+        "offset": 0,
+        "var": "mz_header",
+        "snippet": "4d5a (MZ header)"
+      }
+    ]
+  },
+  {
+    "rule": "RAT_Generic_NetworkSig",
+    "target": "Users/Rick/AppData/Roaming/svchost32.exe",
+    "strings": [
+      {
+        "offset": 8192,
+        "var": "beacon_interval",
+        "snippet": "sleep connect interval"
+      }
+    ]
+  }
+]

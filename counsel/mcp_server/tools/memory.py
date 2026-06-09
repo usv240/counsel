@@ -17,6 +17,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -95,6 +96,10 @@ def pslist(
     Typed output per record:
         pid, ppid, name, path, create_time, exit_time, threads, handles
     """
+    fixture = load_fixture_result("mem_pslist", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     mem = _find_memory_image(evidence_root, image_path)
     if not mem:
         return tool_error_result("mem.pslist", run_id, str(evidence_root),
@@ -159,6 +164,10 @@ def netscan(
     Typed output per record:
         pid, name, laddr, lport, raddr, rport, state, proto, create_time
     """
+    fixture = load_fixture_result("mem_netscan", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     mem = _find_memory_image(evidence_root, image_path)
     if not mem:
         return tool_error_result("mem.netscan", run_id, str(evidence_root),
@@ -228,6 +237,10 @@ def malfind(
     Typed output per record:
         pid, name, address, size, protection, vad_tag, hexdump_preview
     """
+    fixture = load_fixture_result("mem_malfind", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     mem = _find_memory_image(evidence_root, image_path)
     if not mem:
         return tool_error_result("mem.malfind", run_id, str(evidence_root),

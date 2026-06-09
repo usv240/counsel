@@ -15,6 +15,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -86,6 +87,10 @@ def scan(
     Typed output per record:
         rule, target, strings (list of {offset, var, snippet})
     """
+    fixture = load_fixture_result("yara_scan", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     if not yara_bin:
         return tool_error_result("yara.scan", run_id, str(evidence_root),
                                  "YARA binary not configured. Set COUNSEL_YARA_BIN.")

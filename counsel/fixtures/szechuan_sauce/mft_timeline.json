@@ -1,0 +1,52 @@
+[
+  {
+    "ts": "2017-10-04T14:21:53Z",
+    "path": "\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+    "action": "create_file",
+    "MACB": "MACB",
+    "source": "MFT",
+    "entry_num": "187423",
+    "is_deleted": false,
+    "file_size": 114688
+  },
+  {
+    "ts": "2017-10-04T14:22:05Z",
+    "path": "\\Users\\Rick\\AppData\\Roaming\\svchost32.exe",
+    "action": "create_file",
+    "MACB": "MACB",
+    "source": "MFT",
+    "entry_num": "187431",
+    "is_deleted": false,
+    "file_size": 98304
+  },
+  {
+    "ts": "2017-10-04T14:20:11Z",
+    "path": "\\Users\\Rick\\Downloads\\Rick_Sauce_Recipe_CONFIDENTIAL.zip",
+    "action": "create_file",
+    "MACB": "MCB",
+    "source": "MFT",
+    "entry_num": "187418",
+    "is_deleted": false,
+    "file_size": 4194304
+  },
+  {
+    "ts": "2017-10-04T14:19:44Z",
+    "path": "\\Users\\Rick\\Desktop\\SzechuanSauce_Formula_ULTRA_SECRET.docx",
+    "action": "create_file",
+    "MACB": "MACB",
+    "source": "MFT",
+    "entry_num": "187405",
+    "is_deleted": true,
+    "file_size": 28672
+  },
+  {
+    "ts": "2017-10-04T18:44:30Z",
+    "path": "\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+    "action": "create_file",
+    "MACB": "MA",
+    "source": "MFT",
+    "entry_num": "187423",
+    "is_deleted": false,
+    "file_size": 114688
+  }
+]

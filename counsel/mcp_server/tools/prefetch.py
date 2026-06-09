@@ -17,6 +17,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -127,6 +128,10 @@ def run_record(
     Typed output per record:
         exe, hash, run_count, last_run, all_runs, volume, pf_path, pf_created
     """
+    fixture = load_fixture_result("prefetch_run_record", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     pf_files = _find_prefetch_files(evidence_root, name)
 
     if not pf_files:

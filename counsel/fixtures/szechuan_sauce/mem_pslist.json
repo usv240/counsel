@@ -1,0 +1,62 @@
+[
+  {
+    "pid": "4",
+    "ppid": "0",
+    "name": "System",
+    "path": "",
+    "create_time": "2017-10-04T08:00:00Z",
+    "exit_time": "",
+    "threads": "98",
+    "handles": "512"
+  },
+  {
+    "pid": "688",
+    "ppid": "4",
+    "name": "smss.exe",
+    "path": "\\SystemRoot\\System32\\smss.exe",
+    "create_time": "2017-10-04T08:00:01Z",
+    "exit_time": "",
+    "threads": "2",
+    "handles": "29"
+  },
+  {
+    "pid": "852",
+    "ppid": "844",
+    "name": "csrss.exe",
+    "path": "C:\\Windows\\system32\\csrss.exe",
+    "create_time": "2017-10-04T08:00:04Z",
+    "exit_time": "",
+    "threads": "9",
+    "handles": "475"
+  },
+  {
+    "pid": "2104",
+    "ppid": "1488",
+    "name": "wupd.exe",
+    "path": "C:\\Users\\Rick\\AppData\\Local\\Temp\\wupd.exe",
+    "create_time": "2017-10-04T14:22:18Z",
+    "exit_time": "",
+    "threads": "4",
+    "handles": "87"
+  },
+  {
+    "pid": "2388",
+    "ppid": "2104",
+    "name": "svchost32.exe",
+    "path": "C:\\Users\\Rick\\AppData\\Roaming\\svchost32.exe",
+    "create_time": "2017-10-04T14:23:10Z",
+    "exit_time": "",
+    "threads": "3",
+    "handles": "64"
+  },
+  {
+    "pid": "1488",
+    "ppid": "1484",
+    "name": "explorer.exe",
+    "path": "C:\\Windows\\Explorer.EXE",
+    "create_time": "2017-10-04T08:05:22Z",
+    "exit_time": "",
+    "threads": "31",
+    "handles": "874"
+  }
+]

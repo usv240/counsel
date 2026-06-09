@@ -16,6 +16,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -201,6 +202,10 @@ def query(
     Typed output per record:
         channel, eid, ts, description, computer, fields (dict of event data)
     """
+    fixture = load_fixture_result("evtx_query", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     evtx_file = _find_evtx(evidence_root, channel, evtx_path)
     if not evtx_file:
         return tool_error_result("evtx.query", run_id, str(evidence_root),

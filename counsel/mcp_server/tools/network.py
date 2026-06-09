@@ -17,6 +17,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -155,6 +156,10 @@ def flows(
     Typed output per record:
         ts, src, sport, dst, dport, proto, bytes, sni, http_host, dns_query, is_external
     """
+    fixture = load_fixture_result("net_flows", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     pcap = _find_pcap(evidence_root, pcap_path)
     if not pcap:
         return tool_error_result("net.flows", run_id, str(evidence_root),

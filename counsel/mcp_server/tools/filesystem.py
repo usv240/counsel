@@ -19,6 +19,7 @@ from typing import Optional
 from ..parsers.base import (
     ParseResult,
     hash_raw,
+    load_fixture_result,
     run_tool_subprocess,
     sanitize_string,
     tool_error_result,
@@ -84,6 +85,10 @@ def stat_hash(
     Typed output (single record):
         path, exists, size, sha256, mtime, atime, ctime, mode, signed, signer
     """
+    fixture = load_fixture_result("fs_stat_hash", run_id, str(evidence_root))
+    if fixture is not None:
+        return fixture
+
     target = evidence_root / file_path.lstrip("/\\")
     artifact_path = str(target)
     warnings: list[str] = []
