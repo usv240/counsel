@@ -112,9 +112,10 @@ def _make_rule():
         "rule": "conf_test",
         "emits": ["persistence_configured"],
         "signals": [
-            {"artifact": "registry.run_keys", "supports": "persistence_configured", "weight": 0.95},
+            {"artifact": "registry.run_keys", "supports": "persistence_configured", "weight": 0.95,
+             "independent_of": "registry_sources"},
             {"artifact": "prefetch.run_record", "supports": "persistence_configured", "weight": 0.90,
-             "independent_of": "registry.run_keys"},
+             "independent_of": "execution_sources"},  # different group = genuinely independent
         ],
         "provenance": "Test",
     }
@@ -141,9 +142,11 @@ def test_one_signal_is_inference():
     ev_ref = _make_ev("registry.run_keys")
     evidence_map = {"registry.run_keys": (ev_ref, {"exists": True})}
     result = compute_confidence(rule, "persistence_configured", evidence_map)
+    # One independent group active: state is INFERENCE regardless of support score,
+    # because MIN_INDEPENDENT_GROUPS=2 is not yet satisfied.
     assert result.state == ClaimState.INFERENCE
     assert result.support > 0
-    assert result.support < TAU_CORROBORATED
+    assert result.independent_groups_active == 1
 
 
 def test_two_independent_signals_corroborated():
