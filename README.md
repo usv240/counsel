@@ -30,7 +30,7 @@ Built for the **SANS FIND EVIL! 2026 Hackathon** ($22K prizes, June 2026).
 
 ```bash
 # Install
-git clone https://github.com/ujwalv098/counsel
+git clone https://github.com/usv240/counsel
 cd counsel
 pip install -e .
 
