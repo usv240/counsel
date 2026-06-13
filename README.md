@@ -184,13 +184,20 @@ Benchmarked on "Stolen Szechuan Sauce" forensic case (locked answer key).
 
 Fixture-mode = real Claude Haiku 4.5 reasoning, real MCP server, real corroboration
 engine and self-correction loop; only the underlying forensic tool *outputs* are
-pre-recorded from the public case. Real SIFT Workstation run is the remaining step.
+pre-recorded from the public case.
 
 Reproducibility: 3 independent fixture-mode runs (different tool-call orders and
 iteration counts) all reached the identical 5/5 TP / 0/2 FP verdict and the same
 23-event self-correction sequence - the corroboration engine, not LLM phrasing,
-determines the outcome. Canonical signed run: `ce1fe642-986`
-(`counsel-output/ce1fe642-986/`).
+determines the outcome. Canonical signed run: `ce1fe642-986`.
+
+**Real Evidence Run (SRL-2018, SANS FOR508 corporate APT):** COUNSEL has also been run
+against the `base-wkstn-01-c-drive.E01` forensic image (15.76 GB NTFS) and
+`base-wkstn-01-mem.img` (3 GB RAM) from the SANS SRL-2018 dataset. Volatility 3 processes
+the memory image live; EVTX event logs are parsed live via `evtx_dump`. When Eric
+Zimmerman tools (MFTECmd, PECmd, RECmd) are unavailable, COUNSEL degrades gracefully:
+mft.timeline falls back to a filesystem timestamp scan (parse_quality=0.5), which still
+counts as an independent corroboration group. See `docs/accuracy-report.md` for results.
 
 Full report (incl. real self-correction examples and "Hallucinations We Caught"): `docs/accuracy-report.md`
 
