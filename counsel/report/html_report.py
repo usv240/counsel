@@ -208,6 +208,29 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
   {% endfor %}
 
+  {% if ruling_changes %}
+  <div class="card">
+    <h2>Self-Correction Timeline (Ruling Changes)</h2>
+    <p style="color:var(--dim);font-size:12px;margin-bottom:16px">
+      State transitions driven by the corroboration engine, not LLM assertion. Each RULING CHANGE
+      reflects new independent evidence being weighed — this is genuine self-correction, not scripting.
+    </p>
+    {% for rc in ruling_changes %}
+    <div class="timeline-item">
+      <div class="timeline-ts">seq={{ rc.seq }} iter={{ rc.iteration }}</div>
+      <div class="timeline-event">
+        <strong>{{ rc.claim_type }}</strong> [{{ rc.claim_id }}]
+        &nbsp;
+        <span class="state-badge state-{{ rc.from_state[:3].lower() }}">{{ rc.from_state }}</span>
+        &nbsp;&#8594;&nbsp;
+        <span class="state-badge state-{{ rc.to_state[:3].lower() }}">{{ rc.to_state }}</span>
+        <span style="color:var(--dim);font-size:11px;margin-left:8px">support={{ rc.support }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if withheld_claims %}
   <div class="card" style="border-color:#30363d;">
     <h2 style="color:var(--yellow)">Hallucinations Withheld (Engine Refused to Corroborate)</h2>
@@ -405,6 +428,36 @@ def generate(
     attack_techniques = summary.get("attack_techniques", [])
     attack_layer_json = json.dumps(_build_attack_layer(attack_techniques, run_id))
 
+    # Extract ruling changes from ledger for self-correction timeline
+    ruling_changes: list[dict] = []
+    try:
+        with open(ledger.ledger_path, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if not _line:
+                    continue
+                try:
+                    _entry = json.loads(_line)
+                except json.JSONDecodeError:
+                    continue
+                if _entry.get("entry_type") != "claim_state":
+                    continue
+                _p = _entry.get("payload", {})
+                _from = _p.get("from_state", "")
+                _to = _p.get("to_state", "")
+                if _from and _to and _from != _to:
+                    ruling_changes.append({
+                        "seq": _entry.get("seq", ""),
+                        "iteration": _p.get("iteration", ""),
+                        "claim_type": _p.get("claim_type", ""),
+                        "claim_id": _p.get("claim_id", "")[:8],
+                        "from_state": _from,
+                        "to_state": _to,
+                        "support": f"{_p.get('support', 0):.2f}",
+                    })
+    except OSError:
+        pass
+
     integrity_match = evidence_sha_in and evidence_sha_in == evidence_sha_out
     integrity_class = "integrity-ok" if (integrity_match and chain_valid) else "integrity-fail"
     integrity_status = "VERIFIED" if (integrity_match and chain_valid) else "CHECK FAILED"
@@ -437,6 +490,7 @@ def generate(
         attack_layer_json=attack_layer_json,
         corroborated_claims=corroborated,
         withheld_claims=withheld,
+        ruling_changes=ruling_changes,
         all_claims=all_claims,
         ledger_entries=ledger_entries,
         evidence_sha_in=evidence_sha_in,
