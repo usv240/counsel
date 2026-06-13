@@ -47,6 +47,9 @@ def _run_vol(
 
 def _find_memory_image(evidence_root: Path, image_path: Optional[str]) -> Optional[Path]:
     if image_path:
+        p = Path(image_path)
+        if p.is_absolute():
+            return p if p.exists() else None
         p = evidence_root / image_path.lstrip("/\\")
         return p if p.exists() else None
     for ext in ("*.raw", "*.img", "*.vmem", "*.mem", "*.dmp"):
@@ -96,7 +99,7 @@ def pslist(
     Typed output per record:
         pid, ppid, name, path, create_time, exit_time, threads, handles
     """
-    fixture = load_fixture_result("mem_pslist", run_id, str(evidence_root))
+    fixture = load_fixture_result("mem_pslist", run_id, str(evidence_root), artifact_name="mem.pslist")
     if fixture is not None:
         return fixture
 
@@ -164,7 +167,7 @@ def netscan(
     Typed output per record:
         pid, name, laddr, lport, raddr, rport, state, proto, create_time
     """
-    fixture = load_fixture_result("mem_netscan", run_id, str(evidence_root))
+    fixture = load_fixture_result("mem_netscan", run_id, str(evidence_root), artifact_name="mem.netscan")
     if fixture is not None:
         return fixture
 
@@ -237,7 +240,7 @@ def malfind(
     Typed output per record:
         pid, name, address, size, protection, vad_tag, hexdump_preview
     """
-    fixture = load_fixture_result("mem_malfind", run_id, str(evidence_root))
+    fixture = load_fixture_result("mem_malfind", run_id, str(evidence_root), artifact_name="mem.malfind")
     if fixture is not None:
         return fixture
 

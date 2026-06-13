@@ -41,28 +41,40 @@ class ToolPaths:
         """Auto-detect tool binaries from PATH and known SIFT locations."""
         candidates = {
             "recmd": [
+                # SIFT shell wrappers (preferred - no mono needed)
+                "rla", "RECmd",
+                # SIFT absolute .exe paths (run via mono auto-detected in run_tool_subprocess)
                 "/usr/share/doc/recmd/rla.exe", "/opt/SIFT/bin/rla.exe",
                 "RECmd.exe", "rla.exe",
             ],
             "pecmd": [
+                "PECmd",
                 "/usr/share/doc/pecmd/PECmd.exe", "/opt/SIFT/bin/PECmd.exe",
                 "PECmd.exe",
             ],
             "amcache_parser": [
+                "AmcacheParser",
                 "/usr/share/doc/amcacheparser/AmcacheParser.exe",
                 "AmcacheParser.exe",
             ],
             "mft_ecmd": [
+                "MFTECmd",
                 "/usr/share/doc/mftecmd/MFTECmd.exe", "MFTECmd.exe",
             ],
             "volatility": [
                 "vol3", "vol", "volatility3", "volatility",
+                os.path.expanduser("~/.local/bin/vol3"),
+                os.path.expanduser("~/.local/bin/vol"),
                 "/usr/local/bin/vol3", "/opt/SIFT/bin/vol3",
             ],
             "tshark": ["tshark", "/usr/bin/tshark"],
             "zeek": ["zeek", "/usr/local/zeek/bin/zeek"],
             "yara": ["yara", "/usr/bin/yara"],
-            "evtx_dump": ["evtx_dump", "evtxdump", "/usr/local/bin/evtx_dump"],
+            "evtx_dump": [
+                "evtx_dump", "evtxdump",
+                os.path.expanduser("~/.local/bin/evtx_dump"),
+                "/usr/local/bin/evtx_dump",
+            ],
         }
         for attr, paths in candidates.items():
             if getattr(self, attr):

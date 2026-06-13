@@ -42,19 +42,31 @@ except ImportError:
 
 
 def _sha256_path(path: Path, chunk_size: int = 65536) -> str:
-    """Compute SHA256 of a file or directory recursively."""
+    """Compute SHA256 of a file or directory recursively.
+
+    Files that raise OSError (e.g. EOVERFLOW on large NTFS sparse files via
+    ntfs-3g, or unreadable system files) are skipped with their filename still
+    hashed so the directory manifest remains stable.
+    """
     h = hashlib.sha256()
     if path.is_file():
-        with open(path, "rb") as f:
-            while chunk := f.read(chunk_size):
-                h.update(chunk)
+        try:
+            with open(path, "rb") as f:
+                while chunk := f.read(chunk_size):
+                    h.update(chunk)
+        except OSError:
+            pass
     elif path.is_dir():
         for child in sorted(path.rglob("*")):
-            if child.is_file():
-                h.update(str(child.relative_to(path)).encode())
+            if not child.is_file():
+                continue
+            h.update(str(child.relative_to(path)).encode())
+            try:
                 with open(child, "rb") as f:
                     while chunk := f.read(chunk_size):
                         h.update(chunk)
+            except OSError:
+                pass
     return h.hexdigest()
 
 
@@ -165,7 +177,11 @@ def verify_and_sign(
     if genesis_entry:
         result.evidence_sha256_in = genesis_entry["payload"].get("evidence_sha256_in", "")
 
-    if evidence_path.exists():
+    if not result.evidence_sha256_in:
+        # No initial hash recorded (--skip-hash was used): skip post-hash to
+        # avoid reading the entire evidence tree for a comparison that can't pass.
+        result.evidence_intact = False
+    elif evidence_path.exists():
         result.evidence_sha256_out = _sha256_path(evidence_path)
         result.evidence_intact = (
             result.evidence_sha256_in == result.evidence_sha256_out

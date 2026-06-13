@@ -60,8 +60,8 @@ counsel redteam /mnt/evidence
 ## Architecture
 
 ```
-[ Launcher ] ──spawns──> [ MCP Server ] <──stdio──> [ Agent: Claude Opus 4.8 ]
-  signs manifest            10 typed tools              MCP-only, no shell
+[ Launcher ] ──spawns──> [ MCP Server ] <──stdio──> [ Agent: Claude Haiku 4.5 ]
+  signs manifest            11 typed tools              MCP-only, no shell
   holds signing key         parse-before-return         adaptive thinking
   read-only mount           appends to ledger           cannot sign
         |                        |
@@ -171,17 +171,28 @@ Run: `counsel redteam /mnt/evidence`
 
 ## Accuracy Report
 
-Benchmarked on "Stolen Szechuan Sauce" forensic case (locked answer key, June 2026).
+Benchmarked on "Stolen Szechuan Sauce" forensic case (locked answer key).
 
-| Metric | COUNSEL | Baseline Protocol SIFT |
+| Metric | COUNSEL (fixture-mode live run) | Baseline Protocol SIFT |
 |---|---|---|
-| Precision | TBD after SIFT run | TBD |
-| Recall | TBD | TBD |
-| FPR | TBD | TBD |
-| Hallucination Rate | TBD | TBD |
-| ECE | TBD | TBD |
+| Precision | 1.00 (5/5 graded claims) | Not measured |
+| Recall | 1.00 (5/5) | Not measured |
+| FPR | 0.00 (0/2 true negatives) | Not measured |
+| Hallucination Rate | Not computed (n=1 case) | Not measured |
+| ECE | Not computed (n=1 case) | Not measured |
+| Signed Verification | PASSED (Ed25519, evidence_intact=true, chain_valid=true) | Not applicable |
 
-Full report: `docs/accuracy-report.md`
+Fixture-mode = real Claude Haiku 4.5 reasoning, real MCP server, real corroboration
+engine and self-correction loop; only the underlying forensic tool *outputs* are
+pre-recorded from the public case. Real SIFT Workstation run is the remaining step.
+
+Reproducibility: 3 independent fixture-mode runs (different tool-call orders and
+iteration counts) all reached the identical 5/5 TP / 0/2 FP verdict and the same
+23-event self-correction sequence - the corroboration engine, not LLM phrasing,
+determines the outcome. Canonical signed run: `ce1fe642-986`
+(`counsel-output/ce1fe642-986/`).
+
+Full report (incl. real self-correction examples and "Hallucinations We Caught"): `docs/accuracy-report.md`
 
 ---
 
@@ -192,9 +203,9 @@ Full report: `docs/accuracy-report.md`
 - [x] Architecture Diagram (`docs/architecture.md`)
 - [x] Written Description (`docs/written-description.md`)
 - [x] Dataset Documentation (`docs/dataset-docs.md`)
-- [ ] Accuracy Report (`docs/accuracy-report.md`) - after SIFT run
+- [x] Accuracy Report (`docs/accuracy-report.md`) - fixture-mode live run complete, real SIFT run pending
 - [x] Try-It-Out Instructions (this README Quick Start)
-- [ ] Agent Execution Logs - after SIFT run
+- [x] Agent Execution Logs - `counsel-output/<run-id>/counsel-ledger.jsonl` (hash-chained, per-tool-call timestamps + seq); canonical signed run `ce1fe642-986` includes `manifest_*.json` (Ed25519-signed, `Verification: PASSED`) and a sealed `counsel_case_*.tar.gz`
 
 ---
 
@@ -202,5 +213,5 @@ Full report: `docs/accuracy-report.md`
 
 MIT License - Copyright 2026 COUNSEL Contributors
 
-Built with: Claude Opus 4.8 (Anthropic), MCP, SANS SIFT Workstation, Eric Zimmerman Tools,
+Built with: Claude Haiku 4.5 (Anthropic), MCP, SANS SIFT Workstation, Eric Zimmerman Tools,
 Volatility 3, tshark, Rich, Jinja2, cryptography (Ed25519)

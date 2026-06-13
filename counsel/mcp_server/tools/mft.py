@@ -114,6 +114,100 @@ def _safe_int(v: object) -> int:
         return 0
 
 
+_FALLBACK_SCAN_ROOTS = [
+    "Windows/Temp",
+    "Windows/System32/Tasks",
+    "Users",
+    "ProgramData",
+    "$Recycle.Bin",
+    "Temp",
+]
+
+
+def _filesystem_timeline_fallback(
+    run_id: str,
+    evidence_root: Path,
+    mft: Path,
+    path_filter: str,
+    start_time: str,
+    end_time: str,
+    max_records: int,
+    max_str_len: int,
+    ledger_seq: int,
+) -> ParseResult:
+    """Filesystem timestamp scan fallback when MFTECmd is unavailable.
+
+    Walks high-value directories on the mounted evidence volume and returns
+    file modification timestamps as timeline entries. parse_quality=0.5
+    reflects reduced fidelity vs full MFT parsing (no deleted files, no MACB
+    distinction), but is sufficient for corroboration group counting.
+    """
+    records: list[dict] = []
+    warnings = [
+        "MFTECmd not available; falling back to filesystem timestamp scan "
+        "(parse_quality=0.5). Install MFTECmd for full MFT analysis."
+    ]
+
+    roots = [evidence_root / r for r in _FALLBACK_SCAN_ROOTS]
+    if not any(r.exists() for r in roots):
+        roots = [evidence_root]
+
+    for scan_root in roots:
+        if not scan_root.exists():
+            continue
+        try:
+            for child in scan_root.rglob("*"):
+                if len(records) >= max_records:
+                    break
+                if not child.is_file():
+                    continue
+                try:
+                    stat = child.stat()
+                except OSError:
+                    continue
+                try:
+                    rel_str = str(child.relative_to(evidence_root))
+                except ValueError:
+                    rel_str = str(child)
+                if path_filter and path_filter.lower() not in rel_str.lower():
+                    continue
+                ts = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                if start_time and ts < start_time:
+                    continue
+                if end_time and ts > end_time:
+                    continue
+                records.append({
+                    "ts": ts,
+                    "path": sanitize_string(rel_str, max_str_len),
+                    "action": "modify",
+                    "MACB": "MAC.",
+                    "source": "FILESYSTEM",
+                    "entry_num": "",
+                    "is_deleted": False,
+                    "file_size": stat.st_size,
+                })
+        except (OSError, PermissionError):
+            continue
+        if len(records) >= max_records:
+            break
+
+    final_records, truncated = truncate_records(records, max_records, warnings)
+    return ParseResult(
+        tool="mft.timeline",
+        run_id=run_id,
+        seq=ledger_seq,
+        records=final_records,
+        artifact_path=str(mft),
+        offset=0,
+        raw_output_sha256=hash_raw(b"filesystem_scan_fallback"),
+        parse_quality=0.5,
+        warnings=warnings,
+        truncated=truncated,
+    )
+
+
 def timeline(
     run_id: str,
     evidence_root: Path,
@@ -138,29 +232,31 @@ def timeline(
     Typed output per record:
         ts, path, action, MACB, source, entry_num, is_deleted, file_size
     """
-    fixture = load_fixture_result("mft_timeline", run_id, str(evidence_root))
+    fixture = load_fixture_result("mft_timeline", run_id, str(evidence_root), artifact_name="mft.timeline")
     if fixture is not None:
         return fixture
 
     mft = _find_mft(evidence_root, mft_path)
+
+    pf = path_filter or ""
+    st = start_time or ""
+    et = end_time or ""
+
+    if not mft_ecmd_bin:
+        # Fallback: filesystem timestamp scan works even without an accessible $MFT
+        return _filesystem_timeline_fallback(
+            run_id, evidence_root, mft or evidence_root, pf, st, et,
+            max_records, max_str_len, ledger_seq
+        )
+
     if not mft:
         return tool_error_result(
             "mft.timeline", run_id, str(evidence_root),
             "$MFT not found. Provide mft_path or ensure evidence root contains $MFT"
         )
 
-    if not mft_ecmd_bin:
-        return tool_error_result(
-            "mft.timeline", run_id, str(mft),
-            "MFTECmd binary not configured. "
-            "Set COUNSEL_MFTECMD_BIN or install: https://github.com/EricZimmerman/MFTECmd"
-        )
-
     warnings: list[str] = []
     all_raw = b""
-    pf = path_filter or ""
-    st = start_time or ""
-    et = end_time or ""
 
     stdout, stderr, rc = run_tool_subprocess(
         [mft_ecmd_bin, "-f", str(mft), "--csv", "--csvf", "/dev/stdout", "-q"],

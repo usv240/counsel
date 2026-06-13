@@ -1,21 +1,26 @@
 """
-COUNSEL Agent Loop - Claude Opus 4.8 + MCP tools + corroboration engine.
+COUNSEL Agent Loop - Claude Haiku 4.5 + MCP tools + corroboration engine.
 
 State machine: INIT -> TRIAGE -> [PROPOSE -> VERIFY -> GAP? GATHER : RULE] -> SYNTHESIZE -> SIGN
-This is where Criterion 1 (Autonomous Execution Quality) is won.
 
-Key design choices:
-  - Claude Opus 4.8 with adaptive thinking (no budget_tokens - deprecated)
+Design notes:
+  - Claude Haiku 4.5 with extended thinking (budget_tokens=10000)
   - Streaming for long responses (prevents timeout on multi-iteration analysis)
-  - Temperature 0 for the corroboration engine; higher for analyst narration
-  - MAX_ITERATIONS enforced here, not in the prompt (architectural bound)
+  - MAX_ITERATIONS enforced here (architectural bound, not prompt-based)
   - Graceful degradation: on tool failure, mark signal unavailable and continue
+  - Ledger writes are NOT done here — MCP server subprocess writes tool_call entries;
+    the Launcher writes genesis/claim_state/halt before and after this loop.
+    Keeping a second Ledger instance here would corrupt the hash chain via
+    duplicate seq numbers across the two independent in-memory counters.
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import os
+import re
+import sys
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -29,15 +34,163 @@ from mcp.client.stdio import stdio_client
 
 from ..engine.confidence import compute_confidence, prioritize_gaps
 from ..engine.dsl import RuleRegistry
-from ..engine.model import Claim, ClaimGraph, ClaimState, ClaimType, EvidenceRef
-from ..ledger.ledger import Ledger
+from ..engine.model import CLAIM_TYPE_ATTACK, Claim, ClaimGraph, ClaimState, ClaimType, EvidenceRef
 from .prompts import SYSTEM_PROMPT, TRAINING_MODE_ADDENDUM
 
 logger = logging.getLogger("counsel.agent")
 
 MAX_ITERATIONS = 25
-MAX_TOKENS_PER_TURN = 8192
-MODEL = "claude-opus-4-8"
+MAX_TOKENS_PER_TURN = 16384
+MODEL = "claude-haiku-4-5-20251001"
+
+# How many times to nudge the agent to keep investigating if it tries to
+# end_turn while open_gaps is non-empty. Bounded so a model that ignores
+# the nudge entirely can't loop forever (MAX_ITERATIONS still applies too).
+MAX_END_TURN_NUDGES = 3
+
+# Known credential-dumping tool executables (SANS FOR508 / MITRE ATT&CK T1003 toolset).
+_CRED_DUMP_TOOLS = {
+    "mimikatz.exe", "procdump.exe", "procdump64.exe", "pwdump.exe",
+    "pwdump7.exe", "gsecdump.exe", "wce.exe", "fgdump.exe",
+    "secretsdump.exe", "lazagne.exe", "nanodump.exe",
+}
+
+# Path fragments indicating access to a credential-bearing registry hive or AD database.
+_HIVE_PATH_MARKERS = ("\\config\\sam", "\\config\\system", "\\config\\security", "ntds.dit")
+
+# Object names whose access indicates credential-store inspection (MITRE T1003).
+_CRED_OBJECT_MARKERS = ("lsass", "\\sam", "\\security", "\\system32\\config", "ntds.dit")
+
+# RFC1918 + loopback - mirrors the local-net filter in mcp_server/tools/{memory,network}.py.
+_LOCAL_NETS = re.compile(
+    r"^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|::1|fe80:)"
+)
+
+# Filenames embedded in path/value_data/executable fields - used to build a
+# human-readable Claim.subject (e.g. "wupd.exe") that the benchmark harness
+# can match against answer_key subject_hint strings.
+_SUBJECT_FILE_RE = re.compile(
+    r"([\w.\-]+\.(?:exe|dll|sys|bat|cmd|ps1|vbs|scr|docx?|xlsx?|pdf|zip|rar|7z))",
+    re.IGNORECASE,
+)
+
+
+def _subject_candidates(tool: str, records: list[dict]) -> list[str]:
+    """
+    Extract human-readable identifiers (filenames, external IPs) from a tool's
+    records, for use as Claim.subject. Without this, subject defaults to the
+    fixture/evidence artifact path, which never matches answer_key subject_hint
+    values like "wupd" or "185.220.101.47" - silently zeroing out precision/recall.
+    """
+    seen: list[str] = []
+
+    def add(value: str) -> None:
+        if value and value not in seen:
+            seen.append(value)
+
+    for r in records:
+        for val in r.values():
+            if not isinstance(val, str):
+                continue
+            for m in _SUBJECT_FILE_RE.findall(val):
+                add(m)
+        if tool in ("mem.netscan", "net.flows"):
+            for addr_key in ("raddr", "daddr"):
+                addr = str(r.get(addr_key, ""))
+                if addr and not _LOCAL_NETS.match(addr):
+                    add(addr)
+
+    return seen[:8]
+
+
+def _merge_subject(existing_subject: str, new_candidates: list[str]) -> str:
+    """Append newly-discovered subject candidates to a claim's existing subject."""
+    if not new_candidates:
+        return existing_subject
+    current = [s.strip() for s in existing_subject.split(",") if s.strip()]
+    lowered = {s.lower() for s in current}
+    for cand in new_candidates:
+        if cand.lower() not in lowered:
+            current.append(cand)
+            lowered.add(cand.lower())
+    return ", ".join(current[:8])
+
+
+def _build_predicate_record(tool: str, records: list[dict]) -> dict:
+    """
+    Collapse a tool's record list into one dict for `evaluate_predicate`.
+
+    Multi-record artifacts merge boolean fields with existential-OR (True if ANY
+    record has the field set) - correct for "is there at least one external/linked/
+    signed record" style requires: predicates used throughout counsel/rules/*.yaml.
+    Single-record artifacts (e.g. fs.stat_hash) pass their fields through directly.
+
+    Also computes derived indicators (credential-dumping tooling, LSASS/SAM object
+    access, log clearing, external memory connections) that the simple field==value
+    DSL cannot express on its own, since they require scanning across all records.
+    """
+    merged: dict = {"record_count": len(records)}
+
+    if not records:
+        merged["exists"] = False
+        return merged
+
+    if len(records) == 1:
+        merged.update(records[0])
+        merged.setdefault("exists", True)
+    else:
+        merged["exists"] = True
+        all_keys: set[str] = set()
+        for r in records:
+            all_keys.update(r.keys())
+        for key in all_keys:
+            values = [r.get(key) for r in records if key in r]
+            if any(v is True for v in values):
+                merged[key] = True
+            elif all(v is False for v in values):
+                merged[key] = False
+            else:
+                merged[key] = values[0]
+
+    if tool == "evtx.query":
+        merged["log_cleared"] = any(r.get("eid") == 1102 for r in records)
+        merged["lsass_or_hive_access"] = any(
+            r.get("eid") in (4663, 4656)
+            and any(m in str(r.get("fields", {}).get("ObjectName", "")).lower() for m in _CRED_OBJECT_MARKERS)
+            for r in records
+        )
+    elif tool == "mem.malfind":
+        merged["lsass_injection"] = any(str(r.get("name", "")).lower() == "lsass.exe" for r in records)
+    elif tool == "prefetch.run_record":
+        merged["cred_dump_tool"] = any(str(r.get("executable", "")).lower() in _CRED_DUMP_TOOLS for r in records)
+    elif tool == "mem.pslist":
+        merged["cred_dump_tool"] = any(str(r.get("name", "")).lower() in _CRED_DUMP_TOOLS for r in records)
+    elif tool == "fs.stat_hash":
+        path = str(merged.get("path", "")).lower()
+        merged["cred_dump_artifact"] = bool(merged.get("exists")) and any(
+            m in path for m in _HIVE_PATH_MARKERS + ("lsass.dmp",)
+        )
+    elif tool == "mft.timeline":
+        merged["hive_file_referenced"] = any(
+            any(m in str(r.get("path", "")).lower() for m in _HIVE_PATH_MARKERS)
+            for r in records
+        )
+    elif tool == "registry.run_keys":
+        markers = ("\\sam", "lsa\\secrets", "\\security")
+        fields_to_check = ("key", "value_name", "value_data")
+        merged["sam_related_key"] = any(
+            m in str(r.get(f, "")).lower()
+            for r in records
+            for f in fields_to_check
+            for m in markers
+        )
+    elif tool == "mem.netscan":
+        merged["is_external"] = any(
+            not _LOCAL_NETS.match(str(r.get("raddr", "")))
+            for r in records if r.get("raddr")
+        )
+
+    return merged
 
 
 @dataclass
@@ -46,12 +199,10 @@ class LoopConfig:
     evidence_root: Path = Path("/mnt/evidence")
     ledger_path: Path = Path("/tmp/counsel-ledger.jsonl")
     rules_dir: Path = Path("rules/")
-    mcp_server_cmd: list[str] = field(default_factory=lambda: ["python", "-m", "counsel.mcp_server.server"])
+    mcp_server_cmd: list[str] = field(default_factory=lambda: [sys.executable, "-m", "counsel.mcp_server.server"])
     max_iterations: int = MAX_ITERATIONS
     training_mode: bool = False
     anthropic_api_key: str = ""
-
-    # Evidence integrity
     evidence_sha256: str = ""
 
 
@@ -71,17 +222,24 @@ class CounselLoop:
     The main COUNSEL investigation loop.
 
     The agent drives tool selection; the corroboration engine drives state.
-    Self-correction emerges from the gap-detection mechanism, not scripted.
+    Self-correction emerges from the gap-detection mechanism: after every tool
+    call, open_gaps lists the highest-weight unchecked signals still needed to
+    reach CORROBORATED, ordered by weight. The agent reads these and chooses
+    the next tool accordingly — this is architectural self-correction, not scripted.
     """
 
     def __init__(self, config: LoopConfig) -> None:
         self.config = config
         self.claim_graph = ClaimGraph(run_id=config.run_id)
         self.rule_registry = RuleRegistry()
-        self.ledger = Ledger(config.ledger_path, config.run_id)
         self._iteration_logs: list[IterationLog] = []
         self._start_time = 0.0
+        self._last_iteration = 0
         self._client: Optional[anthropic.Anthropic] = None
+        # artifact (dotted tool name) -> (EvidenceRef, predicate record), accumulated
+        # across the whole run. This is the evidence_map passed to compute_confidence.
+        self._artifact_records: dict[str, tuple[EvidenceRef, dict]] = {}
+        self._end_turn_nudges = 0
 
     def _get_client(self) -> anthropic.Anthropic:
         if self._client is None:
@@ -101,7 +259,6 @@ class CounselLoop:
         return base
 
     def _build_mcp_tools_for_api(self, mcp_tools: list) -> list[dict]:
-        """Convert MCP tool definitions to Anthropic API tool_use format."""
         tools = []
         for tool in mcp_tools:
             tools.append({
@@ -112,12 +269,15 @@ class CounselLoop:
         return tools
 
     def _evidence_context(self) -> str:
+        mem_img = os.environ.get("COUNSEL_MEMORY_IMAGE", "")
+        mem_line = f"Memory image: {mem_img}\n" if mem_img else ""
         return (
             f"Evidence root: {self.config.evidence_root}\n"
             f"Run ID: {self.config.run_id}\n"
             f"Evidence SHA256: {self.config.evidence_sha256 or 'not yet computed'}\n"
             f"Max iterations: {self.config.max_iterations}\n"
             f"Rules loaded: {len(self.rule_registry.all_rules())}\n"
+            f"{mem_line}"
         )
 
     def _claims_summary(self) -> str:
@@ -131,51 +291,82 @@ class CounselLoop:
             )
         return "\n".join(lines)
 
+    def _collect_all_gaps(self) -> list[dict]:
+        """
+        Collect high-value unchecked signals across all open (OBSERVED/INFERENCE) claims.
+        Returned to the agent as open_gaps in every tool result — this is what drives
+        gap-detection self-correction: agent sees "amcache_lookup weight=0.65 needed for
+        payload_executed (currently INFERENCE)" and knows which tool to call next.
+        """
+        seen: dict[str, dict] = {}
+
+        for claim in self.claim_graph.claims:
+            if not claim.needs_investigation:
+                continue
+
+            rule = self.rule_registry.get(claim.rule_id)
+            if rule is None:
+                continue
+
+            conf = compute_confidence(rule, claim.claim_type.value, self._artifact_records)
+            for gap in prioritize_gaps(conf):
+                tool = gap.signal.artifact
+                if tool not in seen or seen[tool]["weight"] < gap.signal.weight:
+                    seen[tool] = {
+                        "tool": tool,
+                        "weight": round(gap.signal.weight, 2),
+                        "for_claim": claim.claim_type.value,
+                        "claim_state": claim.state.value,
+                        "note": (
+                            f"Unchecked independent signal — calling this tool moves "
+                            f"{claim.claim_type.value} from {claim.state.value} toward CORROBORATED"
+                        ),
+                    }
+
+        return sorted(seen.values(), key=lambda g: g["weight"], reverse=True)[:6]
+
     def _update_claim_from_tool_result(
         self,
         result: dict,
         iteration: int,
     ) -> list[dict]:
         """
-        After a tool call, run the confidence model on all matching rules
-        and update claim states. Returns list of state change dicts.
+        After a tool call, refresh the persistent evidence_map (self._artifact_records)
+        with this artifact's real record data, then re-run the confidence model on
+        every rule that has this artifact as a signal and update claim states.
+        Returns list of state change dicts. State transitions are recorded in
+        claim.history (not the ledger — the Launcher writes claim_state ledger
+        entries post-run from claim.history).
         """
         state_changes = []
         tool_name = result.get("tool", "")
-        if not result.get("records"):
+        if not tool_name or result.get("error"):
             return state_changes
 
-        # For each rule that uses this tool, check if we have enough to update states
+        records = result.get("records") or []
+        predicate_record = _build_predicate_record(tool_name, records)
+        ev_ref = EvidenceRef(
+            ledger_seq=result.get("seq", 0),
+            tool=tool_name,
+            artifact_path=result.get("evidence", {}).get("path", ""),
+            offset=result.get("evidence", {}).get("offset", 0),
+            raw_sha256=result.get("evidence", {}).get("raw_output_sha256", ""),
+            weight=1.0,
+            independent_group=tool_name,
+            parse_quality=result.get("parse_quality", 1.0),
+        )
+        self._artifact_records[tool_name] = (ev_ref, predicate_record)
+
+        subject_candidates = _subject_candidates(tool_name, records)
+        subject = ", ".join(subject_candidates) or result.get("evidence", {}).get("path", "investigation_subject")
+
         for rule in self.rule_registry.all_rules():
             if not any(s.artifact == tool_name for s in rule.signals):
                 continue
 
-            # Build evidence_map from current claims' evidence refs
-            evidence_map: dict = {}
-            for claim in self.claim_graph.claims:
-                for ev in claim.evidence:
-                    if ev.tool not in evidence_map:
-                        evidence_map[ev.tool] = (ev, result)
-
-            # Add the new tool result
-            fake_ev_ref = EvidenceRef(
-                ledger_seq=result.get("seq", 0),
-                tool=tool_name,
-                artifact_path=result.get("evidence", {}).get("path", ""),
-                offset=result.get("evidence", {}).get("offset", 0),
-                raw_sha256=result.get("evidence", {}).get("raw_output_sha256", ""),
-                weight=1.0,
-                independent_group=tool_name,
-                parse_quality=result.get("parse_quality", 1.0),
-            )
-            evidence_map[tool_name] = (fake_ev_ref, {"exists": bool(result.get("records"))})
-
-            # Compute confidence for each claim type this rule emits
             for claim_type_str in rule.emits:
-                conf = compute_confidence(rule, claim_type_str, evidence_map)
+                conf = compute_confidence(rule, claim_type_str, self._artifact_records)
 
-                # Find or create claim
-                subject = result.get("evidence", {}).get("path", "investigation_subject")
                 existing = next(
                     (c for c in self.claim_graph.claims
                      if c.rule_id == rule.rule_id and c.claim_type.value == claim_type_str),
@@ -187,6 +378,7 @@ class CounselLoop:
                         ct = ClaimType(claim_type_str)
                     except ValueError:
                         continue
+                    attack_technique, attack_tactic = CLAIM_TYPE_ATTACK.get(ct, (None, ""))
                     new_claim = Claim(
                         claim_type=ct,
                         subject=subject,
@@ -194,22 +386,22 @@ class CounselLoop:
                         support_score=conf.support,
                         contradiction_score=conf.contradiction,
                         rule_id=rule.rule_id,
+                        attack_technique=attack_technique,
+                        attack_tactic=attack_tactic,
                     )
-                    new_claim.evidence.append(fake_ev_ref)
+                    for sr in conf.active_signals:
+                        if sr.evidence_ref:
+                            new_claim.evidence.append(sr.evidence_ref)
                     self.claim_graph.add_claim(new_claim)
-                    self.ledger.append_claim_state(
-                        claim_id=new_claim.id,
-                        claim_type=claim_type_str,
-                        subject=subject,
-                        from_state="NONE",
-                        to_state=conf.state.value,
-                        support=conf.support,
-                        contradiction=conf.contradiction,
-                        rule_id=rule.rule_id,
-                        trigger=f"Initial observation from {tool_name}",
-                        iteration=iteration,
-                    )
-                elif conf.state != existing.state:
+                    continue
+
+                for sr in conf.active_signals:
+                    if sr.evidence_ref and sr.evidence_ref not in existing.evidence:
+                        existing.evidence.append(sr.evidence_ref)
+
+                existing.subject = _merge_subject(existing.subject, subject_candidates)
+
+                if conf.state != existing.state:
                     old_state = existing.state
                     existing.record_state_change(
                         new_state=conf.state,
@@ -217,19 +409,7 @@ class CounselLoop:
                         iteration=iteration,
                         new_support=conf.support,
                     )
-                    existing.evidence.append(fake_ev_ref)
-                    self.ledger.append_claim_state(
-                        claim_id=existing.id,
-                        claim_type=claim_type_str,
-                        subject=existing.subject,
-                        from_state=old_state.value,
-                        to_state=conf.state.value,
-                        support=conf.support,
-                        contradiction=conf.contradiction,
-                        rule_id=rule.rule_id,
-                        trigger=f"State change driven by {tool_name}",
-                        iteration=iteration,
-                    )
+                    existing.contradiction_score = conf.contradiction
                     state_changes.append({
                         "claim_id": existing.id,
                         "from": old_state.value,
@@ -240,6 +420,11 @@ class CounselLoop:
                         "RULING CHANGE: %s [%s] %s -> %s (support=%.2f)",
                         claim_type_str, existing.id, old_state.value, conf.state.value, conf.support,
                     )
+                elif (abs(conf.support - existing.support_score) > 1e-9
+                      or abs(conf.contradiction - existing.contradiction_score) > 1e-9):
+                    existing.support_score = conf.support
+                    existing.contradiction_score = conf.contradiction
+                    existing.last_updated = datetime.now(timezone.utc)
 
         return state_changes
 
@@ -247,25 +432,17 @@ class CounselLoop:
         """Main async investigation loop. Returns the final ClaimGraph."""
         self._start_time = time.monotonic()
 
-        # Load rules
         self._load_rules()
 
-        # Write genesis ledger entry
-        self.ledger.genesis(
-            evidence_sha256=self.config.evidence_sha256,
-            tool_catalog_hash="tool_catalog_v1",
-            rule_set_hash=self.rule_registry.catalog_hash(),
-        )
-
-        # Connect to MCP server
         server_params = StdioServerParameters(
             command=self.config.mcp_server_cmd[0],
             args=self.config.mcp_server_cmd[1:],
             env={
-                "COUNSEL_EVIDENCE_ROOT": str(self.config.evidence_root),
+                **os.environ,  # inherit PATH, PYTHONPATH, Anaconda paths, etc.
+                "COUNSEL_EVIDENCE_ROOT": str(self.config.evidence_root.resolve()),
                 "COUNSEL_RUN_ID": self.config.run_id,
-                "COUNSEL_LEDGER_PATH": str(self.config.ledger_path),
-                "COUNSEL_RULES_DIR": str(self.config.rules_dir),
+                "COUNSEL_LEDGER_PATH": str(self.config.ledger_path.resolve()),
+                "COUNSEL_RULES_DIR": str(self.config.rules_dir.resolve()),
             },
         )
 
@@ -298,22 +475,41 @@ class CounselLoop:
                     iteration += 1
                     logger.info("=== ITERATION %d ===", iteration)
 
-                    # Call Claude Opus 4.8 with adaptive thinking + streaming
                     with client.messages.stream(
                         model=MODEL,
                         max_tokens=MAX_TOKENS_PER_TURN,
                         system=self._system_prompt(),
                         messages=messages,
                         tools=mcp_tools,
-                        thinking={"type": "adaptive"},
+                        thinking={"type": "enabled", "budget_tokens": 10000},
                     ) as stream:
                         response = stream.get_final_message()
 
-                    # Append assistant response to conversation
                     messages.append({"role": "assistant", "content": response.content})
 
-                    # Check stop reason
                     if response.stop_reason == "end_turn":
+                        gaps = self._collect_all_gaps()
+                        if gaps and self._end_turn_nudges < MAX_END_TURN_NUDGES:
+                            self._end_turn_nudges += 1
+                            logger.info(
+                                "Agent signaled end_turn at iteration %d but %d open_gaps remain "
+                                "- nudging to continue (%d/%d)",
+                                iteration, len(gaps), self._end_turn_nudges, MAX_END_TURN_NUDGES,
+                            )
+                            messages.append({
+                                "role": "user",
+                                "content": (
+                                    "You ended your turn, but open_gaps is non-empty:\n"
+                                    f"{json.dumps(gaps)}\n\n"
+                                    "Per the investigation loop, call the highest-weight gap tool "
+                                    "now. If a gap is moot (its claim already reached CORROBORATED "
+                                    "or CONTRADICTED via another independent signal), say so "
+                                    "explicitly and move to the next gap. Only produce your final "
+                                    "COUNSEL VERDICT once open_gaps is empty or every remaining "
+                                    "gap has been explained as moot."
+                                ),
+                            })
+                            continue
                         logger.info("Agent signaled end_turn at iteration %d", iteration)
                         break
 
@@ -321,7 +517,6 @@ class CounselLoop:
                         logger.warning("Unexpected stop_reason: %s", response.stop_reason)
                         break
 
-                    # Process tool calls
                     tool_results = []
                     for block in response.content:
                         if block.type != "tool_use":
@@ -332,15 +527,6 @@ class CounselLoop:
 
                         logger.info("Agent calling tool: %s(%s)", tool_name, json.dumps(tool_input)[:100])
 
-                        self.ledger.append_agent_decision(
-                            iteration=iteration,
-                            phase="GATHER",
-                            action=f"call_tool:{tool_name}",
-                            rationale=str(tool_input),
-                            tool_chosen=tool_name,
-                        )
-
-                        # Execute via MCP session
                         try:
                             mcp_result = await session.call_tool(tool_name, tool_input)
                             raw_result = mcp_result.content[0].text if mcp_result.content else "{}"
@@ -349,8 +535,8 @@ class CounselLoop:
                             logger.error("Tool call failed: %s - %s", tool_name, e)
                             result_dict = {"error": str(e), "tool": tool_name, "records": [], "seq": 0}
 
-                        # Update claim states from this result
                         state_changes = self._update_claim_from_tool_result(result_dict, iteration)
+                        open_gaps = self._collect_all_gaps()
 
                         self._iteration_logs.append(IterationLog(
                             iteration=iteration,
@@ -368,35 +554,19 @@ class CounselLoop:
                                 **result_dict,
                                 "claim_state_changes": state_changes,
                                 "current_claims": self._claims_summary(),
+                                "open_gaps": open_gaps,
                             }),
                         })
 
                     if tool_results:
                         messages.append({"role": "user", "content": tool_results})
 
-                    # Check if all claims are settled (early termination)
                     open_claims = [c for c in self.claim_graph.claims if c.needs_investigation]
                     if not open_claims and self.claim_graph.claims:
                         logger.info("All claims settled - terminating at iteration %d", iteration)
-                        self.ledger.append_halt(
-                            reason="all_claims_settled",
-                            iteration=iteration,
-                            open_claims=0,
-                            corroborated_claims=len(self.claim_graph.corroborated_claims()),
-                            elapsed_seconds=time.monotonic() - self._start_time,
-                        )
                         break
 
-                else:
-                    # Max iterations reached
-                    self.ledger.append_halt(
-                        reason="max_iterations_reached",
-                        iteration=iteration,
-                        open_claims=len([c for c in self.claim_graph.claims if c.needs_investigation]),
-                        corroborated_claims=len(self.claim_graph.corroborated_claims()),
-                        elapsed_seconds=time.monotonic() - self._start_time,
-                    )
-
+        self._last_iteration = iteration
         elapsed = time.monotonic() - self._start_time
         logger.info(
             "COUNSEL complete - elapsed=%.1fs iterations=%d corroborated=%d unresolved=%d",

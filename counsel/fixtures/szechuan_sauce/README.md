@@ -5,9 +5,9 @@ Pre-recorded forensic tool outputs from the "Stolen Szechuan Sauce" DFIR scenari
 
 ## What This Is
 
-When `COUNSEL_FIXTURE_DIR` points to this directory, all 10 MCP forensic tools load
+When `COUNSEL_FIXTURE_DIR` points to this directory, all 11 MCP forensic tools load
 these JSON files instead of invoking real binaries on a SIFT Workstation.
-This lets you run the full COUNSEL investigation loop - including Claude Opus reasoning,
+This lets you run the full COUNSEL investigation loop - including Claude Haiku 4.5 reasoning,
 Noisy-OR corroboration math, and the 5-state claim model - on any machine.
 
 ## Scenario Summary

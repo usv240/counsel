@@ -1,0 +1,48 @@
+{
+  "case_name": "Stolen Szechuan Sauce (DFIRmadness)",
+  "description": "Windows 7 host MORTY-PC; user Rick; attacker drops wupd.exe (Meterpreter stager) via malicious download, establishes C2 to 185.220.101.47, exfiltrates SzechuanSauce_Formula_ULTRA_SECRET.docx",
+  "true_positives": [
+    {
+      "claim_type": "persistence_configured",
+      "subject_hint": "wupd",
+      "attack_technique": "T1547.001",
+      "notes": "HKCU\\Run -> wupd.exe and scheduled task WindowsUpdate both present"
+    },
+    {
+      "claim_type": "payload_executed",
+      "subject_hint": "wupd",
+      "attack_technique": "T1059",
+      "notes": "wupd.exe ran 7 times per Prefetch; confirmed by Amcache and EID 4688"
+    },
+    {
+      "claim_type": "payload_present",
+      "subject_hint": "wupd",
+      "attack_technique": "T1105",
+      "notes": "wupd.exe present at %TEMP%, unsigned, YARA Meterpreter_Reverse_TCP hit"
+    },
+    {
+      "claim_type": "payload_active",
+      "subject_hint": "wupd",
+      "attack_technique": "T1055",
+      "notes": "wupd.exe running as PID 2104, parent explorer.exe; network connections active"
+    },
+    {
+      "claim_type": "c2_communication",
+      "subject_hint": "185.220.101.47",
+      "attack_technique": "T1071",
+      "notes": "ESTABLISHED TCP to 185.220.101.47:4444 (Meterpreter) and :8080 (exfil); 4.2MB outbound"
+    }
+  ],
+  "true_negatives": [
+    {
+      "claim_type": "lateral_movement",
+      "subject_hint": "",
+      "notes": "No evidence of lateral movement; attack is contained to MORTY-PC"
+    },
+    {
+      "claim_type": "credential_access",
+      "subject_hint": "",
+      "notes": "No LSASS dump, no Mimikatz artifacts; credential theft not demonstrated in this case"
+    }
+  ]
+}

@@ -108,11 +108,18 @@ class RedTeamSuite:
                 evidence_root=self.evidence_root,
                 hive_paths=[malicious_arg],
             )
-            # If we get here, the call returned a ParseResult (not a shell execution)
+            # If we get here, the call returned a ParseResult (not a shell execution).
+            # The malicious string is opened as a literal (nonexistent) file path -
+            # it surfaces only as text inside a "Hive not found" warning, never as
+            # executed output. A real shell escape would instead produce a record
+            # or stdout containing "PWNED" as DATA from `echo PWNED` running.
             actual = "REJECTED_SAFELY"
-            # Confirm no shell was invoked: PWNED would appear if shell escape worked
-            passed = "PWNED" not in json.dumps(result.to_dict())
-            evidence = f"Tool returned ParseResult with {len(result.records)} records; no shell executed"
+            passed = len(result.records) == 0
+            evidence = (
+                f"Tool returned ParseResult with {len(result.records)} records; "
+                f"warnings={result.warnings}; "
+                f"argument treated as a literal path string, no shell executed"
+            )
         except Exception as e:
             actual = f"EXCEPTION: {type(e).__name__}"
             passed = True  # Exception is also a safe outcome

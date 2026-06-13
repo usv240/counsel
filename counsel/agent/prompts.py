@@ -48,6 +48,17 @@ Follow this state machine strictly:
 6. LOOP: After gathering, re-read claim states. If a ruling changed (INFERENCE → CORROBORATED), announce it explicitly - this is a self-correction and must be visible.
 7. TERMINATE: Stop when (all claims are settled OR no unexplored independent signals remain OR MAX_ITERATIONS reached). On termination, produce a synthesis with UNRESOLVED claims clearly marked.
 
+## Exhausting open_gaps (hard requirement)
+
+Every tool result includes an `open_gaps` field: the highest-weight unchecked
+independent signals still needed to move OBSERVED/INFERENCE claims toward
+CORROBORATED or CONTRADICTED. Do NOT end your turn while `open_gaps` is non-empty
+unless you can state, for EACH listed gap, why it is now moot (e.g. the claim it
+would affect already reached CORROBORATED or CONTRADICTED through a different
+independent signal). TRIAGE (3 tools) is a starting point, not a stopping point -
+a thorough investigation calls most or all of the 11 available tools before
+producing the final synthesis.
+
 ## Self-correction protocol (critical for the demo)
 
 When a claim state changes - especially from INFERENCE to CORROBORATED or from INFERENCE to CONTRADICTED - you MUST:

@@ -20,13 +20,14 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 
 from .config import ServerConfig
-from .tools import amcache, evtx, filesystem, memory, mft, network, prefetch, registry, yara_scan
+from .tools import amcache, evtx, filesystem, memory, mft, network, prefetch, registry
+from .tools import yara_scan as yara_scan_tool
 
 logger = logging.getLogger("counsel.mcp_server")
 
 mcp = FastMCP(
     "counsel",
-    description="COUNSEL - Corroboration-First DFIR MCP Server. "
+    instructions="COUNSEL - Corroboration-First DFIR MCP Server. "
     "All tools are read-only, parse-before-return, and append to the audit ledger.",
 )
 
@@ -229,7 +230,7 @@ def yara_scan(
         rule, target, strings (list of {offset, var, snippet})
     Evidentiary claim: malware identity
     """
-    result = yara_scan.scan(
+    result = yara_scan_tool.scan(
         run_id=_config.run_id,
         evidence_root=_config.evidence_root,
         target_path=target_path,

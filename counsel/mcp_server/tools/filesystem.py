@@ -85,7 +85,7 @@ def stat_hash(
     Typed output (single record):
         path, exists, size, sha256, mtime, atime, ctime, mode, signed, signer
     """
-    fixture = load_fixture_result("fs_stat_hash", run_id, str(evidence_root))
+    fixture = load_fixture_result("fs_stat_hash", run_id, str(evidence_root), artifact_name="fs.stat_hash")
     if fixture is not None:
         return fixture
 

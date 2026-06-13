@@ -133,7 +133,7 @@ def run_keys(
     Typed output per record:
         hive, key, value_name, command, last_write, suspicion_score
     """
-    fixture = load_fixture_result("registry_run_keys", run_id, str(evidence_root))
+    fixture = load_fixture_result("registry_run_keys", run_id, str(evidence_root), artifact_name="registry.run_keys")
     if fixture is not None:
         return fixture
 

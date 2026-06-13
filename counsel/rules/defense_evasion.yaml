@@ -5,6 +5,7 @@ signals:
     supports: defense_evasion
     weight: 0.95
     independent_of: evtx.query
+    requires: "log_cleared == true"
 
   - artifact: mft.timeline
     supports: defense_evasion

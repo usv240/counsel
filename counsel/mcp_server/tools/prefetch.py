@@ -128,7 +128,7 @@ def run_record(
     Typed output per record:
         exe, hash, run_count, last_run, all_runs, volume, pf_path, pf_created
     """
-    fixture = load_fixture_result("prefetch_run_record", run_id, str(evidence_root))
+    fixture = load_fixture_result("prefetch_run_record", run_id, str(evidence_root), artifact_name="prefetch.run_record")
     if fixture is not None:
         return fixture
 

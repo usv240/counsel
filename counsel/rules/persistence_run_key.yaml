@@ -6,6 +6,11 @@ signals:
     weight: 0.95
     independent_of: registry.run_keys
 
+  - artifact: prefetch.run_record
+    supports: persistence_configured
+    weight: 0.55
+    independent_of: prefetch.run_record
+
   - artifact: fs.stat_hash
     supports: payload_present
     weight: 0.70

@@ -45,8 +45,8 @@ The corroboration engine - not the LLM - computes state using a noisy-OR model o
 COUNSEL uses four OS processes with distinct privilege:
 
 1. **Trusted Launcher**: Holds the Ed25519 signing key, mounts evidence read-only, spawns MCP server, calls Verifier after agent exit.
-2. **MCP Server**: Exposes 10 typed forensic tool functions (no shell, parse-before-return). Appends to the ledger.
-3. **Agent Runtime (Claude Opus 4.8)**: MCP-only tools, no shell, no write mount, cannot sign.
+2. **MCP Server**: Exposes 11 typed forensic tool functions (no shell, parse-before-return). Appends to the ledger.
+3. **Agent Runtime (Claude Haiku 4.5)**: MCP-only tools, no shell, no write mount, cannot sign.
 4. **External Verifier**: Recomputes hash chain, verifies evidence SHA256 (hash_in == hash_out), signs manifest with Ed25519.
 
 Three trust boundaries are enforced architecturally (not via prompts):
@@ -69,7 +69,7 @@ Adversarial content in evidence (maliciously named files, registry values contai
 
 - **Autonomous Execution**: Agent forms hypotheses, hits dead ends, recovers from tool failures, and produces multiple genuine ruling changes driven by gap detection (not scripting).
 - **IR Accuracy**: Benchmarked against locked ground-truth answer key. Published precision, recall, FPR, hallucination rate, and calibration curve. "Hallucinations We Caught" gallery included - radical honesty as a feature.
-- **Breadth/Depth**: Full kill chain across disk + memory + network. MITRE ATT&CK mapped. Super-timeline. Tested on two cases.
+- **Breadth/Depth**: Full kill chain across disk + memory + network. MITRE ATT&CK mapped. Super-timeline. Benchmarked against a locked answer key (see Accuracy Report); architecture is case-agnostic and designed to extend to additional fixtures via `COUNSEL_FIXTURE_DIR`.
 - **Constraint Implementation**: Published threat model. RT1–RT7 red-team tests documented failing safely. Prompt injection planted inside evidence (RT3) - the architecture holds because the agent has no dangerous primitives.
 - **Audit Trail**: Every finding → ledger entry → tool call → raw output SHA256 → artifact path + offset. `counsel replay` re-runs any finding on demand. Exportable signed case package.
 - **Usability**: One-command setup. Terminal-first (SIFT-native Rich TUI). Static HTML Case File (no web server). Analyst Training Mode. Community DSL with 5-minute onboarding guide.
@@ -81,14 +81,14 @@ COUNSEL took 3 weeks of solo development:
 1. **Corroboration engine** (`counsel/engine/`) - noisy-OR confidence math with independence
    group partitioning. Fail-closed on malformed rules. All state transitions logged.
 
-2. **Custom MCP server** (`counsel/mcp_server/`) - 10 typed forensic tools, parse-before-return
+2. **Custom MCP server** (`counsel/mcp_server/`) - 11 typed forensic tools, parse-before-return
    (control chars stripped, strings bounded to 512 chars), read-only evidence access,
    hash-chained ledger append. Never exposes raw tool output to the LLM.
 
 3. **Declarative rule DSL** (`counsel/rules/`) - YAML corroboration rules that cite
    forensic provenance (SANS course, Zimmerman docs, ATT&CK). Community-extensible.
 
-4. **Claude Opus 4.8 agent loop** (`counsel/agent/`) - adaptive thinking, MCP-only tools,
+4. **Claude Haiku 4.5 agent loop** (`counsel/agent/`) - adaptive thinking, MCP-only tools,
    no shell, no write access.
 
 5. **Fixture system** (`counsel/fixtures/`) - pre-recorded Szechuan Sauce tool outputs.

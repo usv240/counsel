@@ -53,19 +53,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       --blue: #79c0ff; --purple: #bc8cff;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; font-size: 14px; }
+    html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; font-size: 14px; overflow-x: hidden; }
+    a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 32px; }
     header h1 { color: var(--blue); font-size: 1.6rem; }
-    header .meta { color: var(--dim); margin-top: 4px; }
+    header .meta { color: var(--dim); margin-top: 4px; line-height: 1.8; }
 
-    nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; }
+    nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     nav button { background: none; border: none; color: var(--dim); cursor: pointer;
-                 padding: 12px 20px; font-size: 13px; font-family: inherit; transition: color 0.2s; }
-    nav button:hover, nav button.active { color: var(--blue); border-bottom: 2px solid var(--blue); }
+                 padding: 12px 20px; font-size: 13px; font-family: inherit; transition: color 0.2s, border-color 0.2s;
+                 white-space: nowrap; flex-shrink: 0; border-bottom: 2px solid transparent; }
+    nav button:hover, nav button.active { color: var(--blue); border-bottom-color: var(--blue); }
 
     section { display: none; padding: 32px; max-width: 1200px; margin: 0 auto; }
     section.active { display: block; }
+
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
 
     .state-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
     .state-obs { background: #333; color: #aaa; }
@@ -74,15 +79,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .state-con { background: #3d0d0d; color: #f85149; border: 1px solid #f85149; }
     .state-unr { background: #1a1a1a; color: #7d8590; border: 1px solid #7d8590; }
 
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .card:hover { border-color: var(--blue); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
     .card h2 { color: var(--blue); font-size: 1rem; margin-bottom: 12px; }
     .card .evidence-chain { margin-top: 8px; font-size: 12px; color: var(--dim); }
     .card .evidence-chain a { color: var(--blue); text-decoration: none; }
     .card .evidence-chain a:hover { text-decoration: underline; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 12px; }
     th { background: var(--surface); color: var(--dim); text-align: left;
-         padding: 8px 12px; border-bottom: 1px solid var(--border); }
+         padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     td { padding: 6px 12px; border-bottom: 1px solid #21262d; word-break: break-all; }
     tr:hover td { background: #1c2128; }
 
@@ -90,9 +96,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .tag-attack { background: #1a2a3a; color: var(--blue); border: 1px solid var(--blue);
                   padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; display: inline-block; }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
     .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-                padding: 16px; text-align: center; }
+                padding: 16px; text-align: center; transition: border-color 0.2s, transform 0.15s; }
+    .stat-box:hover { border-color: var(--blue); transform: translateY(-2px); }
     .stat-box .num { font-size: 2rem; font-weight: bold; }
     .stat-box .label { font-size: 11px; color: var(--dim); margin-top: 4px; }
     .num.green { color: var(--green); } .num.yellow { color: var(--yellow); } .num.red { color: var(--red); }
@@ -103,10 +110,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     #search-ledger { background: var(--surface); border: 1px solid var(--border); color: var(--text);
                      padding: 8px 12px; width: 100%; margin-bottom: 16px; font-family: inherit; border-radius: 4px; }
+    #search-ledger:focus { border-color: var(--blue); }
 
-    .integrity-banner { padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-weight: bold; }
+    .integrity-banner { padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-weight: bold; word-break: break-all; }
     .integrity-ok { background: #0d3d1a; border: 1px solid var(--green); color: var(--green); }
     .integrity-fail { background: #3d0d0d; border: 1px solid var(--red); color: var(--red); }
+
+    @media (max-width: 700px) {
+      header { padding: 16px 20px; }
+      header h1 { font-size: 1.3rem; }
+      nav { padding: 0 12px; }
+      nav button { padding: 12px 14px; font-size: 12px; }
+      section { padding: 20px; }
+      .summary-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+      .stat-box { padding: 12px; }
+      .stat-box .num { font-size: 1.5rem; }
+      .timeline-ts { min-width: 130px; font-size: 10px; }
+    }
   </style>
 </head>
 <body>
@@ -185,6 +205,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- ═══ EVIDENCE TRACE ═══ -->
 <section id="evidence">
+  <div class="table-wrap">
   <table>
     <tr><th>ID</th><th>Claim Type</th><th>Subject</th><th>State</th><th>Support</th><th>Tool Evidence</th><th>History</th></tr>
     {% for claim in all_claims %}
@@ -205,6 +226,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </tr>
     {% endfor %}
   </table>
+  </div>
 </section>
 
 <!-- ═══ CORROBORATION GRAPH ═══ -->
@@ -233,6 +255,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <!-- ═══ AUDIT LEDGER ═══ -->
 <section id="ledger">
   <input id="search-ledger" type="text" placeholder="Search ledger entries..." oninput="filterLedger(this.value)">
+  <div class="table-wrap">
   <table id="ledger-table">
     <tr><th>Seq</th><th>Type</th><th>Timestamp</th><th>Summary</th><th>Hash</th></tr>
     {% for entry in ledger_entries %}
@@ -245,6 +268,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </tr>
     {% endfor %}
   </table>
+  </div>
 </section>
 
 <script>

@@ -22,7 +22,9 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -83,9 +85,15 @@ def run_tool_subprocess(
     This is the only place in the MCP server that spawns a subprocess.
     The agent has no access to this - it calls typed MCP functions only.
     """
+    actual_cmd = list(cmd)
+    # On Linux, .NET .exe tools (Eric Zimmerman) require mono runtime
+    if sys.platform != "win32" and actual_cmd and actual_cmd[0].endswith(".exe"):
+        mono = shutil.which("mono") or shutil.which("mono-sgen")
+        if mono:
+            actual_cmd = [mono] + actual_cmd
     try:
         result = subprocess.run(
-            cmd,
+            actual_cmd,
             capture_output=True,
             timeout=timeout,
             cwd=str(cwd),
@@ -113,7 +121,9 @@ def truncate_records(
     return records, False
 
 
-def load_fixture_result(tool_name: str, run_id: str, artifact_path: str) -> "ParseResult | None":
+def load_fixture_result(
+    tool_name: str, run_id: str, artifact_path: str, artifact_name: str | None = None
+) -> "ParseResult | None":
     """
     Load pre-recorded tool output from COUNSEL_FIXTURE_DIR.
 
@@ -122,6 +132,11 @@ def load_fixture_result(tool_name: str, run_id: str, artifact_path: str) -> "Par
 
     File must be a JSON array of record dicts in the same schema the tool
     would produce after parse-before-return. See counsel/fixtures/README.md.
+
+    tool_name selects the fixture file ({tool_name}.json, matches the MCP
+    function name). artifact_name sets ParseResult.tool to the dotted
+    artifact identifier (e.g. "registry.run_keys") that the corroboration
+    rules match against - this must match the real (non-fixture) code path.
     """
     fixture_dir = os.environ.get("COUNSEL_FIXTURE_DIR", "")
     if not fixture_dir:
@@ -135,7 +150,7 @@ def load_fixture_result(tool_name: str, run_id: str, artifact_path: str) -> "Par
         if not isinstance(records, list):
             return None
         return ParseResult(
-            tool=tool_name,
+            tool=artifact_name or tool_name,
             run_id=run_id,
             seq=0,
             records=records,

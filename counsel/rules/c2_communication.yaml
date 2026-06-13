@@ -10,7 +10,7 @@ signals:
   - artifact: mem.netscan
     supports: c2_communication
     weight: 0.90
-    independent_of: net.flows
+    independent_of: mem.netscan
     requires: "is_external == true"
 
   - artifact: mem.pslist

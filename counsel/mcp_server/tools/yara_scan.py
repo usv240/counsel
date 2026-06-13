@@ -87,7 +87,7 @@ def scan(
     Typed output per record:
         rule, target, strings (list of {offset, var, snippet})
     """
-    fixture = load_fixture_result("yara_scan", run_id, str(evidence_root))
+    fixture = load_fixture_result("yara_scan", run_id, str(evidence_root), artifact_name="yara.scan")
     if fixture is not None:
         return fixture
 

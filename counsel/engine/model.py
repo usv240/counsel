@@ -49,6 +49,25 @@ class AttackTechnique(str, Enum):
     T1070 = "T1070"           # Indicator Removal
     T1036 = "T1036"           # Masquerading
     T1105 = "T1105"           # Ingress Tool Transfer
+    T1021 = "T1021"           # Remote Services (Lateral Movement)
+
+
+# Primary MITRE ATT&CK technique + tactic per claim type. This is the
+# claim_type -> technique mapping every rules/*.yaml provenance string already
+# cites; centralized here so the engine (not the LLM) attaches it at claim
+# creation. See bench/answer_key_szechuan_sauce.json for the graded subset.
+CLAIM_TYPE_ATTACK: dict[ClaimType, tuple[AttackTechnique, str]] = {
+    ClaimType.PERSISTENCE_CONFIGURED: (AttackTechnique.T1547_001, "Persistence"),
+    ClaimType.PAYLOAD_PRESENT: (AttackTechnique.T1105, "Command and Control"),
+    ClaimType.PAYLOAD_EXECUTED: (AttackTechnique.T1059, "Execution"),
+    ClaimType.PAYLOAD_ACTIVE: (AttackTechnique.T1055, "Defense Evasion"),
+    ClaimType.LATERAL_MOVEMENT: (AttackTechnique.T1021, "Lateral Movement"),
+    ClaimType.CREDENTIAL_ACCESS: (AttackTechnique.T1003, "Credential Access"),
+    ClaimType.EXFILTRATION: (AttackTechnique.T1041, "Exfiltration"),
+    ClaimType.C2_COMMUNICATION: (AttackTechnique.T1071, "Command and Control"),
+    ClaimType.DEFENSE_EVASION: (AttackTechnique.T1036, "Defense Evasion"),
+    ClaimType.DISCOVERY: (AttackTechnique.T1083, "Discovery"),
+}
 
 
 @dataclass

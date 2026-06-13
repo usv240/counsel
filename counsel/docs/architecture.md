@@ -18,7 +18,7 @@
                |             v             |
     +----------+----------+  stdio  +--------------+
     |    MCP Server        |<------->|  Agent Runtime|
-    |  - 10 typed tools   |         |  Claude Opus 4.8
+    |  - 11 typed tools   |         |  Claude Haiku 4.5
     |  - parse-before-     |         |  - MCP-only tools
     |    return            |         |  - adaptive thinking
     |  - read-only fs      |         |  - NO shell
@@ -55,7 +55,7 @@ There is no file-read tool, no shell tool, no directory-listing tool.
 Even if the agent's reasoning were compromised, it has no path to read
 arbitrary bytes from the evidence image.
 
-**Enforcement**: MCP server exposes 10 typed functions. Agent is configured
+**Enforcement**: MCP server exposes 11 typed functions. Agent is configured
 with ONLY those tools. No `bash` tool. No `read_file` tool.
 
 ### B2 - Ledger/Signing Boundary
@@ -86,7 +86,7 @@ MCP Server (parse-before-return)
     |
     | TypedRecord { records, artifact_path, offset, raw_sha256, parse_quality }
     v
-Agent (Claude Opus 4.8)
+Agent (Claude Haiku 4.5)
     |
     | Reads claim state from corroboration engine
     v

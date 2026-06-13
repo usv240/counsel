@@ -156,7 +156,7 @@ def flows(
     Typed output per record:
         ts, src, sport, dst, dport, proto, bytes, sni, http_host, dns_query, is_external
     """
-    fixture = load_fixture_result("net_flows", run_id, str(evidence_root))
+    fixture = load_fixture_result("net_flows", run_id, str(evidence_root), artifact_name="net.flows")
     if fixture is not None:
         return fixture
 

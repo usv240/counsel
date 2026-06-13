@@ -136,7 +136,7 @@ def lookup(
         path, sha1, name, first_seen, company, description,
         product_version, file_size, linked_pe
     """
-    fixture = load_fixture_result("amcache_lookup", run_id, str(evidence_root))
+    fixture = load_fixture_result("amcache_lookup", run_id, str(evidence_root), artifact_name="amcache.lookup")
     if fixture is not None:
         return fixture
 

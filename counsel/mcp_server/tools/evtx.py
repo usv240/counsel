@@ -202,7 +202,7 @@ def query(
     Typed output per record:
         channel, eid, ts, description, computer, fields (dict of event data)
     """
-    fixture = load_fixture_result("evtx_query", run_id, str(evidence_root))
+    fixture = load_fixture_result("evtx_query", run_id, str(evidence_root), artifact_name="evtx.query")
     if fixture is not None:
         return fixture
 

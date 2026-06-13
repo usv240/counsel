@@ -57,6 +57,7 @@ class AccuracyMetrics:
     corroborated_count: int = 0
     hallucinations_caught: list[str] = field(default_factory=list)
     calibration_bins: list[dict] = field(default_factory=list)
+    additional_findings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -71,6 +72,7 @@ class AccuracyMetrics:
             "corroborated_total": self.corroborated_count,
             "hallucinations_caught": self.hallucinations_caught,
             "calibration_bins": self.calibration_bins,
+            "additional_findings": self.additional_findings,
         }
 
 
@@ -92,8 +94,21 @@ def evaluate(
     Compute precision, recall, FPR, hallucination rate, and ECE.
     """
     metrics = AccuracyMetrics()
-    corroborated = claim_graph.corroborated_claims()
+    all_corroborated = claim_graph.corroborated_claims()
+
+    # Only claim_types the answer key actually characterizes (as a TP or TN)
+    # count toward precision/FPR. A CORROBORATED claim of an out-of-scope
+    # claim_type (e.g. defense_evasion, discovery) isn't "wrong" - the key
+    # simply doesn't grade it - so it's reported separately, not as a FP.
+    graded_types = {e["claim_type"] for e in answer_key.true_positives}
+    graded_types |= {e["claim_type"] for e in answer_key.true_negatives}
+
+    corroborated = [c for c in all_corroborated if c.claim_type.value in graded_types]
     metrics.corroborated_count = len(corroborated)
+    metrics.additional_findings = [
+        f"{c.claim_type.value} - {c.subject[:60]} (support={c.support_score:.2f})"
+        for c in all_corroborated if c.claim_type.value not in graded_types
+    ]
 
     # True positives: corroborated claims that match the answer key
     matched_keys = set()
@@ -244,6 +259,11 @@ def print_accuracy_report(metrics: AccuracyMetrics, case_name: str) -> None:
         c.print("[dim](Claims that seemed plausible but lacked corroboration)[/dim]")
         for h in metrics.hallucinations_caught:
             c.print(f"  [yellow]![/yellow] {h}")
+
+    if metrics.additional_findings:
+        c.print("\n[bold cyan]Additional CORROBORATED Findings (outside answer key scope):[/bold cyan]")
+        for f in metrics.additional_findings:
+            c.print(f"  [cyan]+[/cyan] {f}")
 
     if metrics.calibration_bins:
         table = Table("Bin", "Confidence", "Accuracy", "N", title="Calibration", box=rbox.SIMPLE)

@@ -21,6 +21,7 @@ counsel-output/
 *.tar.gz
 manifest_*.json
 counsel_case_*.html
+*.log
 
 # Memory images and evidence (never commit these)
 *.raw

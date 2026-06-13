@@ -23,14 +23,18 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 
 from ..agent.loop import CounselLoop, LoopConfig
+from ..engine.dsl import RuleRegistry
 from ..mcp_server.config import ServerConfig
 from ..redteam.suite import RedTeamSuite
 from ..report import html_report, tui
 from ..verifier.verify import export_case_package, verify_and_sign
 from ..ledger.ledger import Ledger
+
+load_dotenv()
 
 app = typer.Typer(
     name="counsel",
@@ -123,8 +127,21 @@ def investigate(
     else:
         console.print("[yellow]Evidence hashing skipped (integrity attestation will be incomplete)[/yellow]")
 
-    # Load rules
+    # Auto-detect fixture mode: if evidence is under counsel/fixtures/, set COUNSEL_FIXTURE_DIR
+    # so the MCP server subprocess uses pre-recorded outputs instead of real SIFT binaries.
+    fixtures_base = Path(__file__).parent.parent / "fixtures"
+    try:
+        evidence.resolve().relative_to(fixtures_base.resolve())
+        if not os.environ.get("COUNSEL_FIXTURE_DIR"):
+            os.environ["COUNSEL_FIXTURE_DIR"] = str(evidence.resolve())
+            console.print(f"[purple]Fixture mode (auto): {evidence.resolve()}[/purple]")
+    except ValueError:
+        pass  # evidence is not under fixtures/ - real SIFT run
+
+    # Load rules (needed for catalog_hash in genesis; loop will re-load idempotently)
     rules_dir = Path(__file__).parent.parent / "rules"
+    rule_registry = RuleRegistry()
+    rule_registry.load_directory(rules_dir)
 
     config = LoopConfig(
         run_id=run_id,
@@ -136,13 +153,51 @@ def investigate(
         evidence_sha256=evidence_sha256,
     )
 
+    # Write genesis entry BEFORE spawning the MCP server subprocess.
+    # The MCP server calls Ledger._resume() lazily on its first tool call and
+    # will inherit seq=1 from this entry, avoiding dual-process seq collisions.
+    pre_ledger = Ledger(ledger_path, run_id)
+    pre_ledger.genesis(
+        evidence_sha256=evidence_sha256,
+        tool_catalog_hash="tool_catalog_v1",
+        rule_set_hash=rule_registry.catalog_hash(),
+    )
+
     # Run investigation
-    tui.print_investigation_start(run_id, evidence, 0)  # rules count filled in loop
+    tui.print_investigation_start(run_id, evidence, len(rule_registry.all_rules()))
     start = time.monotonic()
 
     loop = CounselLoop(config)
     claim_graph = asyncio.run(loop.run())
     elapsed = time.monotonic() - start
+
+    # Write claim_state transitions and halt entry after the MCP server subprocess
+    # has exited (stdio_client context closed inside loop.run()).
+    # A fresh Ledger instance calls _resume() to continue the chain after the
+    # MCP server's last tool_call entry.
+    post_ledger = Ledger(ledger_path, run_id)
+    for claim in claim_graph.claims:
+        for sc in claim.history:
+            post_ledger.append_claim_state(
+                claim_id=claim.id,
+                claim_type=claim.claim_type.value,
+                subject=claim.subject,
+                from_state=sc.from_state.value,
+                to_state=sc.to_state.value,
+                support=sc.support_after,
+                contradiction=claim.contradiction_score,
+                rule_id=claim.rule_id,
+                trigger=sc.trigger,
+                iteration=sc.iteration,
+            )
+    open_claims = len([c for c in claim_graph.claims if c.needs_investigation])
+    post_ledger.append_halt(
+        reason="all_claims_settled" if open_claims == 0 else "max_iterations_reached",
+        iteration=loop._last_iteration,
+        open_claims=open_claims,
+        corroborated_claims=len(claim_graph.corroborated_claims()),
+        elapsed_seconds=elapsed,
+    )
 
     # Print verdict to terminal
     tui.print_verdict(claim_graph, elapsed, run_id)
