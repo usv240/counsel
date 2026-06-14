@@ -46,3 +46,6 @@ Rules.md
 
 # Local dev helpers (not part of the product)
 verify_*.py
+
+# Personal demo recording script (not part of the product)
+counsel/docs/demo-script.md
