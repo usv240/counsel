@@ -203,8 +203,13 @@ def investigate(
         halt_reason = loop._halt_reason  # abnormal termination (e.g. rate_limit_halt)
     elif open_claims == 0:
         halt_reason = "all_claims_settled"
-    else:
+    elif loop._last_iteration >= config.max_iterations:
         halt_reason = "max_iterations_reached"
+    else:
+        # Agent signaled end_turn with low-confidence leads still open by design
+        # (e.g. an INFERENCE claim the engine refused to assert). It concluded the
+        # investigation voluntarily - it did not run out of iterations.
+        halt_reason = "investigation_concluded"
     post_ledger.append_halt(
         reason=halt_reason,
         iteration=loop._last_iteration,
