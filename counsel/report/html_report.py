@@ -47,19 +47,36 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <title>COUNSEL Case File - {{ run_id }}</title>
   <style>
     :root {
-      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      /* Dark theme (default) - forensic console */
+      --bg: #0d1117; --surface: #161b22; --surface-2: #1c2128; --border: #30363d; --border-soft: #21262d;
       --text: #e6edf3; --dim: #7d8590;
-      --green: #3fb950; --yellow: #d29922; --red: #f85149;
-      --blue: #79c0ff; --purple: #bc8cff;
+      --green: #3fb950; --yellow: #d29922; --red: #f85149; --blue: #79c0ff; --purple: #bc8cff;
+      --cor-bg: #0d3d1a; --inf-bg: #3d2f00; --con-bg: #3d0d0d; --unr-bg: #1a1a1a; --obs-bg: #333333; --obs-text: #aaaaaa;
+      --tag-bg: #1a2a3a; --tip-bg: #1c2230;
+      --re-genesis: #1a2a3a; --re-tool: #1a2a1a; --re-claim: #2a1a2a; --re-think: #2a2a1a; --re-decision: #1a1a2a; --re-halt: #2a1a1a;
+      --shadow: rgba(0,0,0,0.35);
+    }
+    :root[data-theme="light"] {
+      /* Light theme - printed report */
+      --bg: #f6f8fa; --surface: #ffffff; --surface-2: #eef1f4; --border: #d0d7de; --border-soft: #e4e8ec;
+      --text: #1f2328; --dim: #59636e;
+      --green: #1a7f37; --yellow: #9a6700; --red: #cf222e; --blue: #0969da; --purple: #8250df;
+      --cor-bg: #dafbe1; --inf-bg: #fff8c5; --con-bg: #ffebe9; --unr-bg: #eaeef2; --obs-bg: #eaeef2; --obs-text: #59636e;
+      --tag-bg: #ddf4ff; --tip-bg: #ffffff;
+      --re-genesis: #ddf4ff; --re-tool: #dafbe1; --re-claim: #fbefff; --re-think: #fff8c5; --re-decision: #ddf4ff; --re-halt: #ffebe9;
+      --shadow: rgba(140,149,159,0.25);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
-    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; font-size: 14px; overflow-x: hidden; }
+    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; font-size: 14px; overflow-x: hidden; transition: background 0.2s, color 0.2s; }
     a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 32px; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 32px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
     header h1 { color: var(--blue); font-size: 1.6rem; }
-    header .meta { color: var(--dim); margin-top: 4px; line-height: 1.8; }
+    header .tagline { color: var(--dim); font-size: 12px; font-style: italic; margin-top: 2px; }
+    header .meta { color: var(--dim); margin-top: 6px; line-height: 1.8; }
+    .theme-toggle { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); cursor: pointer; padding: 8px 13px; border-radius: 6px; font-family: inherit; font-size: 12px; white-space: nowrap; flex-shrink: 0; transition: border-color 0.15s, color 0.15s; }
+    .theme-toggle:hover { border-color: var(--blue); color: var(--blue); }
 
     nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     nav button { background: none; border: none; color: var(--dim); cursor: pointer;
@@ -70,17 +87,37 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     section { display: none; padding: 32px; max-width: 1200px; margin: 0 auto; }
     section.active { display: block; }
 
+    /* What / How / Why intro blurb at the top of each tab */
+    .section-intro { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--blue);
+                     border-radius: 8px; padding: 14px 18px; margin-bottom: 22px; font-size: 12.5px; line-height: 1.75; color: var(--dim); }
+    .section-intro b { color: var(--text); }
+    .section-intro .whw { display: block; margin-top: 4px; }
+    .section-intro .whw b { color: var(--blue); }
+
+    /* Info "i" button + educational tooltip */
+    .info { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%;
+            border: 1px solid var(--dim); color: var(--dim); font-size: 10px; font-style: normal; font-weight: bold; line-height: 1;
+            cursor: help; margin-left: 6px; position: relative; vertical-align: middle; user-select: none; flex-shrink: 0; }
+    .info:hover, .info:focus { border-color: var(--blue); color: var(--blue); }
+    .info .info-tip { display: none; position: absolute; z-index: 60; top: 22px; left: 50%; transform: translateX(-50%);
+                      width: 290px; max-width: 78vw; background: var(--tip-bg); border: 1px solid var(--border); border-radius: 8px;
+                      padding: 12px 14px; box-shadow: 0 10px 30px var(--shadow); text-align: left; font-size: 11.5px; line-height: 1.6;
+                      color: var(--text); font-weight: normal; white-space: normal; }
+    .info:hover .info-tip, .info:focus .info-tip { display: block; }
+    .info-tip .kv { margin: 6px 0; }
+    .info-tip .kv b { color: var(--blue); }
+
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
 
     .state-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
-    .state-obs { background: #333; color: #aaa; }
-    .state-inf { background: #3d2f00; color: #d29922; border: 1px solid #d29922; }
-    .state-cor { background: #0d3d1a; color: #3fb950; border: 1px solid #3fb950; }
-    .state-con { background: #3d0d0d; color: #f85149; border: 1px solid #f85149; }
-    .state-unr { background: #1a1a1a; color: #7d8590; border: 1px solid #7d8590; }
+    .state-obs { background: var(--obs-bg); color: var(--obs-text); }
+    .state-inf { background: var(--inf-bg); color: var(--yellow); border: 1px solid var(--yellow); }
+    .state-cor { background: var(--cor-bg); color: var(--green); border: 1px solid var(--green); }
+    .state-con { background: var(--con-bg); color: var(--red); border: 1px solid var(--red); }
+    .state-unr { background: var(--unr-bg); color: var(--dim); border: 1px solid var(--dim); }
 
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; transition: border-color 0.2s, box-shadow 0.2s; }
-    .card:hover { border-color: var(--blue); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+    .card:hover { border-color: var(--blue); box-shadow: 0 8px 24px var(--shadow); }
     .card h2 { color: var(--blue); font-size: 1rem; margin-bottom: 12px; }
     .card .evidence-chain { margin-top: 8px; font-size: 12px; color: var(--dim); }
     .card .evidence-chain a { color: var(--blue); text-decoration: none; }
@@ -89,11 +126,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 12px; }
     th { background: var(--surface); color: var(--dim); text-align: left;
          padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    td { padding: 6px 12px; border-bottom: 1px solid #21262d; word-break: break-all; }
-    tr:hover td { background: #1c2128; }
+    td { padding: 6px 12px; border-bottom: 1px solid var(--border-soft); word-break: break-all; }
+    tr:hover td { background: var(--surface-2); }
 
     .hash { font-size: 10px; color: var(--dim); }
-    .tag-attack { background: #1a2a3a; color: var(--blue); border: 1px solid var(--blue);
+    .tag-attack { background: var(--tag-bg); color: var(--blue); border: 1px solid var(--blue);
                   padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; display: inline-block; }
 
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
@@ -104,7 +141,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .stat-box .label { font-size: 11px; color: var(--dim); margin-top: 4px; }
     .num.green { color: var(--green); } .num.yellow { color: var(--yellow); } .num.red { color: var(--red); }
 
-    .timeline-item { display: flex; gap: 16px; padding: 8px 0; border-bottom: 1px solid #21262d; }
+    .timeline-item { display: flex; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
     .timeline-ts { color: var(--dim); font-size: 11px; min-width: 200px; }
     .timeline-event { flex: 1; }
 
@@ -113,45 +150,45 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     #search-ledger:focus { border-color: var(--blue); }
 
     .integrity-banner { padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-weight: bold; word-break: break-all; }
-    .integrity-ok { background: #0d3d1a; border: 1px solid var(--green); color: var(--green); }
-    .integrity-fail { background: #3d0d0d; border: 1px solid var(--red); color: var(--red); }
+    .integrity-ok { background: var(--cor-bg); border: 1px solid var(--green); color: var(--green); }
+    .integrity-fail { background: var(--con-bg); border: 1px solid var(--red); color: var(--red); }
 
     /* Replay player */
     #replay-player { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     #replay-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
     #replay-controls button { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 7px 16px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 13px; transition: border-color 0.15s, background 0.15s; }
-    #replay-controls button:hover { border-color: var(--blue); background: #1c2128; }
+    #replay-controls button:hover { border-color: var(--blue); background: var(--surface-2); }
     #replay-controls button.primary { border-color: var(--blue); color: var(--blue); }
     #replay-speed { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 4px; font-family: inherit; font-size: 12px; }
     #replay-progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
     #replay-progress-fill { height: 100%; background: var(--blue); width: 0%; transition: width 0.2s; }
     #replay-counter { color: var(--dim); font-size: 12px; margin-left: auto; }
     #replay-feed { max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 8px; }
-    .replay-entry { padding: 7px 10px; border-bottom: 1px solid #21262d; font-size: 12px; line-height: 1.5; opacity: 0; transform: translateY(6px); transition: opacity 0.25s ease, transform 0.25s ease; }
+    .replay-entry { padding: 7px 10px; border-bottom: 1px solid var(--border-soft); font-size: 12px; line-height: 1.5; opacity: 0; transform: translateY(6px); transition: opacity 0.25s ease, transform 0.25s ease; }
     .replay-entry.visible { opacity: 1; transform: translateY(0); }
     .replay-entry .re-seq { color: var(--dim); min-width: 36px; display: inline-block; }
     .replay-entry .re-type { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 8px; }
-    .re-genesis   { background: #1a2a3a; color: var(--blue); }
-    .re-tool_call { background: #1a2a1a; color: var(--green); }
-    .re-claim_state { background: #2a1a2a; color: var(--purple); }
-    .re-agent_thinking { background: #2a2a1a; color: var(--yellow); }
-    .re-agent_decision { background: #1a1a2a; color: #79c0ff; }
-    .re-halt { background: #2a1a1a; color: var(--red); }
+    .re-genesis   { background: var(--re-genesis); color: var(--blue); }
+    .re-tool_call { background: var(--re-tool); color: var(--green); }
+    .re-claim_state { background: var(--re-claim); color: var(--purple); }
+    .re-agent_thinking { background: var(--re-think); color: var(--yellow); }
+    .re-agent_decision { background: var(--re-decision); color: var(--blue); }
+    .re-halt { background: var(--re-halt); color: var(--red); }
     .replay-claim-change { margin-top: 4px; font-size: 11px; }
     .replay-claim-change .from-state { color: var(--yellow); }
     .replay-claim-change .to-state { color: var(--green); font-weight: bold; }
-    #replay-verdict { display: none; padding: 14px 20px; border-radius: 6px; margin-top: 14px; background: #0d3d1a; border: 1px solid var(--green); color: var(--green); font-weight: bold; font-size: 14px; animation: fadeIn 0.4s ease; }
+    #replay-verdict { display: none; padding: 14px 20px; border-radius: 6px; margin-top: 14px; background: var(--cor-bg); border: 1px solid var(--green); color: var(--green); font-weight: bold; font-size: 14px; animation: fadeIn 0.4s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     #claim-scoreboard { display: none; margin-top: 14px; }
     #claim-scoreboard h3 { color: var(--blue); font-size: 13px; margin-bottom: 10px; }
-    .claim-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #21262d; font-size: 12px; }
+    .claim-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border-soft); font-size: 12px; }
     .claim-indicator { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: background 0.4s; flex-shrink: 0; }
     .claim-indicator.cor { background: var(--green); box-shadow: 0 0 6px var(--green); }
     .claim-indicator.inf { background: var(--yellow); }
     .claim-indicator.obs { background: var(--dim); }
 
     @media (max-width: 700px) {
-      header { padding: 16px 20px; }
+      header { padding: 16px 20px; flex-direction: column; }
       header h1 { font-size: 1.3rem; }
       nav { padding: 0 12px; }
       nav button { padding: 12px 14px; font-size: 12px; }
@@ -160,18 +197,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       .stat-box { padding: 12px; }
       .stat-box .num { font-size: 1.5rem; }
       .timeline-ts { min-width: 130px; font-size: 10px; }
+      .info .info-tip { left: auto; right: 0; transform: none; }
     }
   </style>
 </head>
 <body>
 <header>
-  <h1>COUNSEL Case File</h1>
-  <div class="meta">
-    Run ID: {{ run_id }} &nbsp;|&nbsp;
-    Generated: {{ generated_at }} &nbsp;|&nbsp;
-    Elapsed: {{ elapsed }}s &nbsp;|&nbsp;
-    Claims: {{ total_claims }}
+  <div>
+    <h1>COUNSEL Case File</h1>
+    <div class="tagline">Corroboration-first DFIR - every finding traces to evidence, every ruling is earned.</div>
+    <div class="meta">
+      Run ID: {{ run_id }} &nbsp;|&nbsp;
+      Generated: {{ generated_at }} &nbsp;|&nbsp;
+      Elapsed: {{ elapsed }}s &nbsp;|&nbsp;
+      Claims: {{ total_claims }}
+    </div>
   </div>
+  <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Switch light / dark theme">Light mode</button>
 </header>
 
 <nav>
@@ -184,25 +226,40 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- ═══ SUMMARY ═══ -->
 <section id="summary" class="active">
+  <div class="section-intro">
+    <span class="whw"><b>What:</b> the consolidated verdict for this investigation - one ruling per finding.</span>
+    <span class="whw"><b>How:</b> a corroboration engine (not the language model) assigns each finding a state from typed forensic evidence.</span>
+    <span class="whw"><b>Why:</b> an analyst can act on a CORROBORATED finding and defend it in court, because every ruling is earned from independent sources, not asserted by an AI.</span>
+  </div>
+
   <div class="integrity-banner {{ integrity_class }}">
     Evidence Integrity: {{ integrity_status }}
     &nbsp;|&nbsp; SHA256 IN: <span class="hash">{{ evidence_sha_in[:32] }}…</span>
     &nbsp;|&nbsp; SHA256 OUT: <span class="hash">{{ evidence_sha_out[:32] }}…</span>
     &nbsp;|&nbsp; Ledger Chain: {{ chain_status }}
+    <span class="info" tabindex="0">i<span class="info-tip">
+      <div class="kv"><b>What:</b> proof the evidence was never altered during analysis.</div>
+      <div class="kv"><b>How:</b> the evidence is SHA256-hashed before (IN) and after (OUT) the run; a match plus a valid Ed25519 hash-chain means nothing changed.</div>
+      <div class="kv"><b>Why:</b> in DFIR this is "spoliation" - if the original data is modified, findings are inadmissible. VERIFIED = read-only integrity held.</div>
+    </span></span>
   </div>
 
   <div class="summary-grid">
-    <div class="stat-box"><div class="num green">{{ corroborated_count }}</div><div class="label">CORROBORATED</div></div>
-    <div class="stat-box"><div class="num yellow">{{ inference_count }}</div><div class="label">INFERENCE</div></div>
-    <div class="stat-box"><div class="num red">{{ contradicted_count }}</div><div class="label">CONTRADICTED</div></div>
-    <div class="stat-box"><div class="num">{{ unresolved_count }}</div><div class="label">UNRESOLVED</div></div>
-    <div class="stat-box"><div class="num">{{ tool_calls }}</div><div class="label">TOOL CALLS</div></div>
-    <div class="stat-box"><div class="num">{{ iterations }}</div><div class="label">ITERATIONS</div></div>
+    <div class="stat-box"><div class="num green">{{ corroborated_count }}</div><div class="label">CORROBORATED <span class="info" tabindex="0">i<span class="info-tip"><div class="kv"><b>What:</b> a confirmed finding.</div><div class="kv"><b>How:</b> two or more <i>independent</i> forensic sources agree and combined support &#8805; 0.80.</div><div class="kv"><b>Why:</b> requiring independence is what blocks single-source hallucinations.</div></span></span></div></div>
+    <div class="stat-box"><div class="num yellow">{{ inference_count }}</div><div class="label">INFERENCE <span class="info" tabindex="0">i<span class="info-tip"><div class="kv"><b>What:</b> a lead, not yet confirmed.</div><div class="kv"><b>How:</b> one source supports it, but a second independent group has not (yet) agreed.</div><div class="kv"><b>Why:</b> shown for transparency but deliberately <i>not</i> asserted - this is withholding in action.</div></span></span></div></div>
+    <div class="stat-box"><div class="num red">{{ contradicted_count }}</div><div class="label">CONTRADICTED <span class="info" tabindex="0">i<span class="info-tip"><div class="kv"><b>What:</b> a claim the engine actively rejected.</div><div class="kv"><b>How:</b> an independent, higher-weight signal refutes it (contradiction &#8805; 0.60).</div><div class="kv"><b>Why:</b> a naive tool would assert it on keyword presence; COUNSEL refutes it on evidence.</div></span></span></div></div>
+    <div class="stat-box"><div class="num">{{ unresolved_count }}</div><div class="label">UNRESOLVED <span class="info" tabindex="0">i<span class="info-tip"><div class="kv"><b>What:</b> searched, but undecided.</div><div class="kv"><b>How:</b> the bounded investigation finished without sufficient corroborating evidence.</div><div class="kv"><b>Why:</b> "I don't know" is a valid, honest forensic answer - better than a guess.</div></span></span></div></div>
+    <div class="stat-box"><div class="num">{{ tool_calls }}</div><div class="label">TOOL CALLS <span class="info" tabindex="0">i<span class="info-tip"><div class="kv"><b>What:</b> forensic tool executions this run.</div><div class="kv"><b>How:</b> each is a typed MCP call (registry, prefetch, memory, network, logs) recorded in the ledger.</div><div class="kv"><b>Why:</b> every finding links back to these exact calls - full traceability.</div></span></span></div></div>
+    <div class="stat-box"><div class="num">{{ iterations }}</div><div class="label">ITERATIONS <span class="info" tabindex="0">i<span class="info-tip"><div class="kv"><b>What:</b> agent reasoning rounds.</div><div class="kv"><b>How:</b> each round the agent reviews open gaps and chooses the next highest-value tool.</div><div class="kv"><b>Why:</b> the loop is bounded - the agent cannot run forever, an architectural safety limit.</div></span></span></div></div>
   </div>
 
   {% if attack_techniques %}
   <div class="card">
-    <h2>MITRE ATT&CK Techniques (Corroborated only)</h2>
+    <h2>MITRE ATT&amp;CK Techniques (Corroborated only)<span class="info" tabindex="0">i<span class="info-tip">
+      <div class="kv"><b>What:</b> the adversary techniques behind the confirmed findings, mapped to the MITRE ATT&amp;CK framework.</div>
+      <div class="kv"><b>How:</b> only techniques from CORROBORATED findings are listed - inferred or contradicted claims are excluded.</div>
+      <div class="kv"><b>Why:</b> ATT&amp;CK IDs are the shared language of IR; download the layer to view the kill chain in the official Navigator.</div>
+    </span></span></h2>
     <div style="margin-bottom:12px">
       {% for t in attack_techniques %}
       <span class="tag-attack">{{ t }}</span>
@@ -240,7 +297,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       {% endfor %}
     </div>
     {% if claim.analyst_notes %}
-    <div style="margin-top:8px;color:#7d8590;font-size:12px">
+    <div style="margin-top:8px;color:var(--dim);font-size:12px">
       {% for note in claim.analyst_notes %}<div>{{ note }}</div>{% endfor %}
     </div>
     {% endif %}
@@ -249,7 +306,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   {% if ruling_changes %}
   <div class="card">
-    <h2>Self-Correction Timeline (Ruling Changes)</h2>
+    <h2>Self-Correction Timeline (Ruling Changes)<span class="info" tabindex="0">i<span class="info-tip">
+      <div class="kv"><b>What:</b> every time a finding changed state during the investigation, in order.</div>
+      <div class="kv"><b>How:</b> the corroboration engine re-scored claims as each new tool result arrived; a change fires only when independent evidence shifts the math.</div>
+      <div class="kv"><b>Why:</b> this is genuine self-correction, not a script - watch a claim flip from INFERENCE to CONTRADICTED when the evidence refutes it.</div>
+    </span></span></h2>
     <p style="color:var(--dim);font-size:12px;margin-bottom:16px">
       State transitions driven by the corroboration engine, not LLM assertion. Each RULING CHANGE
       reflects new independent evidence being weighed — this is genuine self-correction, not scripting.
@@ -271,14 +332,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   {% endif %}
 
   {% if withheld_claims %}
-  <div class="card" style="border-color:#30363d;">
-    <h2 style="color:var(--yellow)">Hallucinations Withheld (Engine Refused to Corroborate)</h2>
+  <div class="card">
+    <h2 style="color:var(--yellow)">Hallucinations Withheld (Engine Refused to Corroborate)<span class="info" tabindex="0">i<span class="info-tip">
+      <div class="kv"><b>What:</b> claims a keyword-matching AI would have asserted, that COUNSEL did <i>not</i> confirm.</div>
+      <div class="kv"><b>How:</b> they reached only INFERENCE (one source), were CONTRADICTED (refuted), or UNRESOLVED (no corroboration found).</div>
+      <div class="kv"><b>Why:</b> this is the anti-hallucination guarantee made visible - the value is in what the engine refused to say.</div>
+    </span></span></h2>
     <p style="color:var(--dim);font-size:12px;margin-bottom:16px">
       A naive LLM would have asserted these as confirmed. COUNSEL's corroboration engine withheld CORROBORATED status
       because independent evidence groups were insufficient. This is the anti-hallucination guarantee in action.
     </p>
     {% for claim in withheld_claims %}
-    <div style="padding:8px 0;border-bottom:1px solid #21262d;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+    <div style="padding:8px 0;border-bottom:1px solid var(--border-soft);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
       <span class="state-badge {{ state_class(claim.state) }}">{{ claim.state.value }}</span>
       <strong>{{ claim.claim_type.value }}</strong>
       <span style="color:var(--dim)">— {{ claim.subject[:70] }}</span>
@@ -297,10 +362,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- ═══ EVIDENCE TRACE ═══ -->
 <section id="evidence">
+  <div class="section-intro">
+    <span class="whw"><b>What:</b> the complete per-rule claim record - every claim the engine evaluated, with its state, support score, and the exact tools behind it.</span>
+    <span class="whw"><b>How:</b> each row links to the ledger sequence numbers of the tool calls that produced it, so any finding is traceable to its source.</span>
+    <span class="whw"><b>Why:</b> judges and analysts must be able to trace any finding back to the specific tool execution - this table is that audit trail.</span>
+  </div>
   <p style="color:var(--dim);font-size:12px;margin-bottom:12px">
-    Complete per-rule claim record. Multiple rules may evaluate the same claim type independently,
-    so a type can appear more than once here — the <a href="#summary" style="color:var(--blue)">Executive Summary</a>
-    consolidates these into one verdict per finding.
+    Multiple rules may evaluate the same claim type independently, so a type can appear more than once here —
+    the <a href="#summary" style="color:var(--blue)">Executive Summary</a> consolidates these into one verdict per finding.
   </p>
   <div class="table-wrap">
   <table>
@@ -328,6 +397,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- ═══ CORROBORATION GRAPH ═══ -->
 <section id="graph">
+  <div class="section-intro">
+    <span class="whw"><b>What:</b> each finding shown as a tree of the independent evidence sources beneath it.</span>
+    <span class="whw"><b>How:</b> a finding is CORROBORATED only when branches from <i>different</i> forensic domains (disk, memory, network, logs) converge on it.</span>
+    <span class="whw"><b>Why:</b> independence is the whole game - two sources from the same artifact are not corroboration, and this view shows the separation at a glance.</span>
+  </div>
   <div class="card">
     <h2>Corroboration Relationships</h2>
     <p style="color:var(--dim);font-size:12px;margin-bottom:12px">Consolidated verdict — one finding per claim type.</p>
@@ -352,7 +426,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- ═══ AUDIT LEDGER ═══ -->
 <section id="ledger">
-  <input id="search-ledger" type="text" placeholder="Search ledger entries..." oninput="filterLedger(this.value)">
+  <div class="section-intro">
+    <span class="whw"><b>What:</b> the tamper-evident record of every step the agent took - tool calls, reasoning, and ruling changes, in order.</span>
+    <span class="whw"><b>How:</b> each entry stores the SHA256 of the previous one (a hash chain) and the whole file is Ed25519-signed; altering any row breaks every hash after it.</span>
+    <span class="whw"><b>Why:</b> this is what makes findings court-defensible - a verifier can prove the record was not edited after the fact. Click an evidence link anywhere to jump here.</span>
+  </div>
   <div class="table-wrap">
   <table id="ledger-table">
     <tr><th>Seq</th><th>Type</th><th>Timestamp</th><th>Summary</th><th>Hash</th></tr>
@@ -371,6 +449,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- ═══ INVESTIGATION REPLAY ═══ -->
 <section id="replay">
+  <div class="section-intro">
+    <span class="whw"><b>What:</b> a play-by-play animation of the investigation reconstructed from the signed ledger.</span>
+    <span class="whw"><b>How:</b> it steps through ledger entries in order, updating each claim's state live as the evidence that drove it arrives.</span>
+    <span class="whw"><b>Why:</b> it makes the corroboration process legible - you can watch findings get earned (and refuted) instead of taking the verdict on faith.</span>
+  </div>
   <div id="replay-player">
     <h2 style="color:var(--blue);margin-bottom:6px;">Investigation Replay</h2>
     <p style="color:var(--dim);font-size:12px;margin-bottom:14px;">
@@ -407,6 +490,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </section>
 
 <script>
+// ── Theme (light / dark) ─────────────────────────────────────────────
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  var btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = (theme === 'light') ? 'Dark mode' : 'Light mode';
+  try { localStorage.setItem('counsel-theme', theme); } catch (e) {}
+}
+function toggleTheme() {
+  var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  applyTheme(cur === 'light' ? 'dark' : 'light');
+}
+(function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem('counsel-theme'); } catch (e) {}
+  if (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) saved = 'light';
+  applyTheme(saved === 'light' ? 'light' : 'dark');
+})();
+
 function showTab(id, btn) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
