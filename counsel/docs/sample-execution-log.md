@@ -25,15 +25,18 @@ Every entry in `counsel-ledger.jsonl` has this structure:
 
 `entry_hash = SHA256(prev_hash + canonical_json_of_entry)` — every entry is chained to its predecessor.
 
-There are exactly five entry types:
+There are six entry types:
 
 | Type | Written by | Purpose |
 |---|---|---|
 | `genesis` | Launcher (pre-run) | Pins evidence SHA256, tool catalog hash, rule set hash |
 | `tool_call` | MCP server | Records every forensic tool invocation + raw output SHA256 |
-| `claim_state` | Launcher (post-run) | Records every INFERENCE→CORROBORATED (and other) transitions |
-| `agent_decision` | *(reserved — not currently written)* | Agent reasoning trace |
+| `agent_thinking` | Launcher (post-run) | SHA256 hash of each extended-thinking block + next tool chosen |
+| `claim_state` | Launcher (post-run) | Records every state transition (INFERENCE→CORROBORATED, etc.) |
+| `agent_decision` | Launcher (post-run) | Reserved for structured agent decision records |
 | `halt` | Launcher (post-run) | Termination reason, final counts, elapsed time |
+
+**`agent_thinking` is the novel entry type unique to COUNSEL.** Every Claude Haiku extended-thinking block is SHA256-hashed immediately after the API response and stored here — not the raw text (which can be large) but its hash, which is tamper-evident. The `next_tool` field links each thinking block to the forensic tool call that followed. An auditor can verify: at seq N the agent was reasoning about X, at seq N+1 it called tool Y, at seq N+2 the claim state changed to Z.
 
 ---
 
@@ -124,7 +127,22 @@ seq=9  entry_type=tool_call
 
   [MCP server subprocess exits; Launcher writes post-run entries]
 
-seq=10  entry_type=claim_state         <-- written by Launcher post-run
+  [agent_thinking entries written first — one per API response that had thinking blocks]
+
+seq=10  entry_type=agent_thinking      <-- written by Launcher post-run
+  payload:
+    iteration:        3
+    thinking_sha256:  "a7f3e9d1c5b8a2f6e4d0c3b7..."  (SHA256 of the thinking block text)
+    thinking_len:     2847                             (chars of reasoning)
+    tool_use_id:      "toolu_01Xy..."
+    next_tool:        "amcache_lookup"
+  entry_hash: <sha256:...>
+
+  Purpose: proves the agent was reasoning about amcache_lookup BEFORE calling it.
+  The hash proves the reasoning existed and was unaltered. Not the raw text — just
+  the fingerprint. Auditors can verify: thinking → tool → state change is a causal chain.
+
+seq=11  entry_type=claim_state         <-- written by Launcher post-run
   payload:
     claim_id:        "a1b2c3d4"
     claim_type:      "payload_executed"
@@ -137,7 +155,7 @@ seq=10  entry_type=claim_state         <-- written by Launcher post-run
     trigger:         "amcache_lookup result"
     iteration:       3
 
-seq=11  entry_type=claim_state
+seq=12  entry_type=claim_state
   payload:
     claim_type:  "payload_present"
     from_state:  "INFERENCE"
@@ -145,7 +163,7 @@ seq=11  entry_type=claim_state
     support:     0.993
     trigger:     "yara_scan result"
 
-seq=12  entry_type=claim_state
+seq=13  entry_type=claim_state
   payload:
     claim_type:  "c2_communication"
     from_state:  "INFERENCE"
@@ -153,7 +171,7 @@ seq=12  entry_type=claim_state
     support:     0.987
     trigger:     "mem_netscan result"
 
-seq=13  entry_type=halt
+seq=14  entry_type=halt
   payload:
     reason:               "all_claims_settled"
     iteration:            9
@@ -196,3 +214,27 @@ counsel verify-package counsel-output/<run-id>/counsel_case_<run-id>.tar.gz \
 
 This recomputes `SHA256(prev_hash + canonical_json)` for every entry and confirms
 the stored `entry_hash` matches. Any post-hoc modification of any entry fails this check.
+
+---
+
+## Investigation Replay (HTML Case File)
+
+The generated `counsel_case_<run-id>.html` embeds all ledger entries as JSON and includes
+a JavaScript replay player (fifth tab: "Investigation Replay"). Click Play to watch entries
+animate in chronological order — genesis → agent_thinking → tool_call → claim_state →
+CORROBORATED — with a live claim-state scoreboard updating as evidence accumulates.
+
+---
+
+## RT8: This Log Without Claude
+
+The same verdict encoded in this ledger can be reproduced with **zero API calls**
+by feeding the forensic tool results directly to the corroboration engine:
+
+```bash
+pytest tests/test_rt8_agentless.py -v   # 8 tests, 1.6s, no ANTHROPIC_API_KEY
+```
+
+Evidence fed in reverse tool order. Same 5/5 CORROBORATED, 0/2 FP.
+This proves: the verdict is deterministic given the evidence.
+Claude Haiku navigates. The noisy-OR engine judges.
