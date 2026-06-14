@@ -24,6 +24,7 @@ import re
 import sys
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,8 +42,24 @@ from .prompts import SYSTEM_PROMPT, TRAINING_MODE_ADDENDUM
 logger = logging.getLogger("counsel.agent")
 
 MAX_ITERATIONS = 25
-MAX_TOKENS_PER_TURN = 16384
+MAX_TOKENS_PER_TURN = 8192
 MODEL = "claude-haiku-4-5-20251001"
+
+# ─── Client-side rate limiting ──────────────────────────────────────────────
+# The free / tier-1 Anthropic limit is 50,000 input tokens per minute. The agent
+# conversation grows every iteration (each tool result is re-sent), so by iter ~7
+# three requests in a 60s window breach the cap and the run 429s. We avoid this
+# proactively (not just via SDK retry/backoff) with two levers:
+#   1. INPUT_TPM_BUDGET: pace requests so the rolling 60s input-token sum stays
+#      under this budget (headroom below 50K for the upcoming request's growth).
+#   2. MAX_RECORDS_IN_CONTEXT: cap how many raw records each tool result re-sends
+#      to the model. The engine already computed claims from the FULL record set
+#      and the ledger retains all records, so this only bounds the agent's working
+#      context — never the forensic result.
+INPUT_TPM_BUDGET = 38000
+MAX_RECORDS_IN_CONTEXT = 10
+# Extra SDK-level retries as a second line of defense if pacing still grazes the cap.
+CLIENT_MAX_RETRIES = 6
 
 # How many times to nudge the agent to keep investigating if it tries to
 # end_turn while open_gaps is non-empty. Bounded so a model that ignores
@@ -75,6 +92,16 @@ _SUBJECT_FILE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Legitimate Windows system processes that constantly appear as ParentProcessName/
+# ProcessName in EVTX records. They are pure noise as a Claim.subject. Matched on
+# EXACT basename (case-insensitive) so the malware "svchost32.exe" is NOT excluded
+# by the legitimate "svchost.exe".
+_SYSTEM_PROCESS_DENYLIST = frozenset({
+    "smss.exe", "csrss.exe", "wininit.exe", "winlogon.exe", "services.exe",
+    "lsm.exe", "svchost.exe", "explorer.exe", "taskhost.exe", "taskhostw.exe",
+    "dwm.exe", "spoolsv.exe", "searchindexer.exe", "system",
+})
+
 
 def _subject_candidates(tool: str, records: list[dict]) -> list[str]:
     """
@@ -82,21 +109,40 @@ def _subject_candidates(tool: str, records: list[dict]) -> list[str]:
     records, for use as Claim.subject. Without this, subject defaults to the
     fixture/evidence artifact path, which never matches answer_key subject_hint
     values like "wupd" or "185.220.101.47" - silently zeroing out precision/recall.
+
+    Legitimate system processes are filtered out and matching is case-insensitive
+    so the subject reads as a clean list of suspicious artifacts (malware binaries,
+    external C2 IPs) rather than a soup of every executable mentioned in the logs.
     """
     seen: list[str] = []
+    seen_lower: set[str] = set()
+    _exec_exts = (".exe", ".dll", ".sys", ".bat", ".cmd", ".ps1", ".vbs", ".scr")
 
     def add(value: str) -> None:
-        if value and value not in seen:
-            seen.append(value)
+        if not value:
+            return
+        low = value.lower()
+        if low in _SYSTEM_PROCESS_DENYLIST or low in seen_lower:
+            return
+        # Windows binary names are case-insensitive; normalize executables to
+        # lowercase so "WUPD.EXE" and "wupd.exe" never render as two casings.
+        # Document/archive names keep their original case (it carries meaning).
+        display = low if low.endswith(_exec_exts) else value
+        seen.append(display)
+        seen_lower.add(low)
 
     for r in records:
         for val in r.values():
-            if not isinstance(val, str):
-                continue
-            for m in _SUBJECT_FILE_RE.findall(val):
-                add(m)
+            if isinstance(val, dict):
+                for v in val.values():
+                    if isinstance(v, str):
+                        for m in _SUBJECT_FILE_RE.findall(v):
+                            add(m)
+            elif isinstance(val, str):
+                for m in _SUBJECT_FILE_RE.findall(val):
+                    add(m)
         if tool in ("mem.netscan", "net.flows"):
-            for addr_key in ("raddr", "daddr"):
+            for addr_key in ("raddr", "daddr", "dst"):  # net.flows uses 'dst'
                 addr = str(r.get(addr_key, ""))
                 if addr and not _LOCAL_NETS.match(addr):
                     add(addr)
@@ -244,13 +290,68 @@ class CounselLoop:
         # Thinking blocks collected during the run; written to ledger by Launcher post-run
         # to avoid hash-chain corruption from a concurrent Ledger instance.
         self._thinking_records: list[dict] = []
+        # Set when the loop terminates abnormally (e.g. API rate limit exhausted).
+        # The Launcher surfaces this as the halt reason so a degraded run still
+        # produces a signed ledger + case file instead of crashing.
+        self._halt_reason: Optional[str] = None
+        # Rolling window of (monotonic_ts, input_tokens) for client-side pacing.
+        self._token_window: deque[tuple[float, int]] = deque()
+        self._last_input_tokens = 0
 
     def _get_client(self) -> anthropic.Anthropic:
         if self._client is None:
             import os
             api_key = self.config.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-            self._client = anthropic.Anthropic(api_key=api_key)
+            self._client = anthropic.Anthropic(api_key=api_key, max_retries=CLIENT_MAX_RETRIES)
         return self._client
+
+    async def _pace_for_token_budget(self, est_tokens: int) -> None:
+        """
+        Sleep until sending a request of ~est_tokens input tokens keeps the rolling
+        60-second input-token total under INPUT_TPM_BUDGET. This keeps us below the
+        organisation's tokens-per-minute limit by design, so the run completes
+        instead of relying on 429 backoff. No effect on what the agent sees.
+        """
+        while True:
+            now = time.monotonic()
+            while self._token_window and now - self._token_window[0][0] > 60.0:
+                self._token_window.popleft()
+            used = sum(t for _, t in self._token_window)
+            if not self._token_window or used + est_tokens <= INPUT_TPM_BUDGET:
+                return
+            sleep_for = 60.0 - (now - self._token_window[0][0]) + 0.5
+            logger.info(
+                "Rate-limit pacing: %d input tok in last 60s + est %d > budget %d - sleeping %.1fs",
+                used, est_tokens, INPUT_TPM_BUDGET, sleep_for,
+            )
+            await asyncio.sleep(max(sleep_for, 1.0))
+
+    def _record_token_usage(self, response) -> None:
+        """Record a completed request's input-token cost for the pacing window."""
+        usage = getattr(response, "usage", None)
+        n = getattr(usage, "input_tokens", 0) or 0
+        if n:
+            self._token_window.append((time.monotonic(), n))
+            self._last_input_tokens = n
+
+    def _compact_result_for_context(self, result_dict: dict) -> dict:
+        """
+        Cap the raw records re-sent to the model so the conversation stops growing
+        without bound. The engine has already consumed the FULL result to update
+        claims, and the signed ledger retains every record — this trims only the
+        agent's working context, never the forensic record.
+        """
+        records = result_dict.get("records")
+        if not isinstance(records, list) or len(records) <= MAX_RECORDS_IN_CONTEXT:
+            return result_dict
+        compact = dict(result_dict)
+        compact["records"] = records[:MAX_RECORDS_IN_CONTEXT]
+        compact["records_truncated"] = {
+            "shown": MAX_RECORDS_IN_CONTEXT,
+            "total": len(records),
+            "note": "Full records are in the signed ledger; claims already computed from all records.",
+        }
+        return compact
 
     def _load_rules(self) -> None:
         loaded = self.rule_registry.load_directory(self.config.rules_dir)
@@ -362,7 +463,8 @@ class CounselLoop:
         self._artifact_records[tool_name] = (ev_ref, predicate_record)
 
         subject_candidates = _subject_candidates(tool_name, records)
-        subject = ", ".join(subject_candidates) or result.get("evidence", {}).get("path", "investigation_subject")
+        _artifact_path = result.get("evidence", {}).get("path", "")
+        subject = ", ".join(subject_candidates) or (Path(_artifact_path).stem if _artifact_path else "investigation_subject")
 
         for rule in self.rule_registry.all_rules():
             if not any(s.artifact == tool_name for s in rule.signals):
@@ -478,16 +580,45 @@ class CounselLoop:
                 while iteration < self.config.max_iterations:
                     iteration += 1
                     logger.info("=== ITERATION %d ===", iteration)
+                    if iteration > 1:
+                        await asyncio.sleep(2)
 
-                    with client.messages.stream(
-                        model=MODEL,
-                        max_tokens=MAX_TOKENS_PER_TURN,
-                        system=self._system_prompt(),
-                        messages=messages,
-                        tools=mcp_tools,
-                        thinking={"type": "enabled", "budget_tokens": 10000},
-                    ) as stream:
-                        response = stream.get_final_message()
+                    # Triage (iter 1) needs full reasoning; gap-fill iterations
+                    # just pick the next highest-weight tool — minimal budget.
+                    thinking_budget = 5000 if iteration == 1 else 1024
+                    # Proactively pace so the rolling 60s input-token total stays
+                    # under the org's per-minute limit (avoids 429 by design).
+                    await self._pace_for_token_budget(self._last_input_tokens)
+                    try:
+                        with client.messages.stream(
+                            model=MODEL,
+                            max_tokens=MAX_TOKENS_PER_TURN,
+                            system=self._system_prompt(),
+                            messages=messages,
+                            tools=mcp_tools,
+                            thinking={"type": "enabled", "budget_tokens": thinking_budget},
+                        ) as stream:
+                            response = stream.get_final_message()
+                        self._record_token_usage(response)
+                    except anthropic.APIStatusError as e:
+                        # The SDK already retried with backoff and still failed (most
+                        # commonly a 429 rate-limit once the conversation grows). Rather
+                        # than crash and lose the entire case, halt gracefully: every
+                        # claim resolved so far is preserved and the Launcher still
+                        # writes a signed ledger + HTML case file. A partial,
+                        # evidence-backed verdict beats no verdict.
+                        iteration -= 1  # this iteration did not complete
+                        self._halt_reason = (
+                            "rate_limit_halt" if isinstance(e, anthropic.RateLimitError)
+                            else "api_error_halt"
+                        )
+                        logger.warning(
+                            "API call failed at iteration %d (%s: %s) - halting gracefully "
+                            "with %d claims resolved so far",
+                            iteration + 1, type(e).__name__, e,
+                            len(self.claim_graph.claims),
+                        )
+                        break
 
                     # Extract extended-thinking blocks and store for ledger (written post-run
                     # by Launcher to avoid dual-process hash chain corruption).
@@ -581,7 +712,7 @@ class CounselLoop:
                             "type": "tool_result",
                             "tool_use_id": block.id,
                             "content": json.dumps({
-                                **result_dict,
+                                **self._compact_result_for_context(result_dict),
                                 "claim_state_changes": state_changes,
                                 "current_claims": self._claims_summary(),
                                 "open_gaps": open_gaps,

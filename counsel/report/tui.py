@@ -214,8 +214,12 @@ def print_verdict(claim_graph: ClaimGraph, elapsed_seconds: float, run_id: str) 
     console.print(f"[dim]Elapsed:[/dim] {elapsed_seconds:.1f}s")
     console.print()
 
+    # One representative per claim_type so the verdict reads as distinct findings,
+    # not repeated rule paths. Full per-rule detail remains in the claims table.
+    distinct = claim_graph.distinct_findings()
+
     # Corroborated
-    corroborated = claim_graph.corroborated_claims()
+    corroborated = [c for c in distinct if c.state == ClaimState.CORROBORATED]
     if corroborated:
         console.print("[bold green]CORROBORATED FINDINGS:[/bold green]")
         for c in corroborated:
@@ -226,8 +230,20 @@ def print_verdict(claim_graph: ClaimGraph, elapsed_seconds: float, run_id: str) 
                 f"       Evidence: {' + '.join(ev.tool for ev in c.evidence)}"
             )
 
+    # Contradicted - actively refuted (e.g. lateral_movement). The headline
+    # anti-hallucination result, so it gets its own section.
+    contradicted = [c for c in distinct if c.state == ClaimState.CONTRADICTED]
+    if contradicted:
+        console.print()
+        console.print("[bold red]CONTRADICTED (assertion blocked by conflicting evidence):[/bold red]")
+        for c in contradicted:
+            console.print(
+                f"  [red][CON][/red] {c.claim_type.value} - {c.subject}\n"
+                f"       Contradiction: {c.contradiction_score:.2f} - independent source refutes this claim"
+            )
+
     # Inference
-    inference = [c for c in claim_graph.claims if c.state == ClaimState.INFERENCE]
+    inference = [c for c in distinct if c.state == ClaimState.INFERENCE]
     if inference:
         console.print()
         console.print("[yellow]INFERENCE (not yet corroborated):[/yellow]")
@@ -238,7 +254,7 @@ def print_verdict(claim_graph: ClaimGraph, elapsed_seconds: float, run_id: str) 
             )
 
     # Unresolved
-    unresolved = claim_graph.unresolved_claims()
+    unresolved = [c for c in distinct if c.state == ClaimState.UNRESOLVED]
     if unresolved:
         console.print()
         console.print("[grey50]UNRESOLVED:[/grey50]")

@@ -199,13 +199,24 @@ def investigate(
                 iteration=sc.iteration,
             )
     open_claims = len([c for c in claim_graph.claims if c.needs_investigation])
+    if loop._halt_reason:
+        halt_reason = loop._halt_reason  # abnormal termination (e.g. rate_limit_halt)
+    elif open_claims == 0:
+        halt_reason = "all_claims_settled"
+    else:
+        halt_reason = "max_iterations_reached"
     post_ledger.append_halt(
-        reason="all_claims_settled" if open_claims == 0 else "max_iterations_reached",
+        reason=halt_reason,
         iteration=loop._last_iteration,
         open_claims=open_claims,
         corroborated_claims=len(claim_graph.corroborated_claims()),
         elapsed_seconds=elapsed,
     )
+    if loop._halt_reason:
+        console.print(
+            f"[yellow]Investigation halted early ({loop._halt_reason}) - "
+            f"case file reflects {len(claim_graph.claims)} claims gathered before the halt.[/yellow]"
+        )
 
     # Print verdict to terminal
     tui.print_verdict(claim_graph, elapsed, run_id)

@@ -223,6 +223,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div><strong>Subject:</strong> {{ claim.subject }}</div>
     <div style="margin-top:8px"><strong>Confidence:</strong> {{ "%.2f"|format(claim.support_score) }}</div>
+    {% set _paths = rule_path_counts.get(claim.claim_type.value, 1) %}
+    {% if _paths > 1 %}
+    <div style="color:var(--dim);font-size:11px;margin-top:4px">corroborated via {{ _paths }} independent rule paths</div>
+    {% endif %}
     {% if claim.attack_technique %}
     <div><span class="tag-attack">{{ claim.attack_technique.value }}</span></div>
     {% endif %}
@@ -293,6 +297,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 <!-- ═══ EVIDENCE TRACE ═══ -->
 <section id="evidence">
+  <p style="color:var(--dim);font-size:12px;margin-bottom:12px">
+    Complete per-rule claim record. Multiple rules may evaluate the same claim type independently,
+    so a type can appear more than once here — the <a href="#summary" style="color:var(--blue)">Executive Summary</a>
+    consolidates these into one verdict per finding.
+  </p>
   <div class="table-wrap">
   <table>
     <tr><th>ID</th><th>Claim Type</th><th>Subject</th><th>State</th><th>Support</th><th>Tool Evidence</th><th>History</th></tr>
@@ -321,8 +330,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <section id="graph">
   <div class="card">
     <h2>Corroboration Relationships</h2>
+    <p style="color:var(--dim);font-size:12px;margin-bottom:12px">Consolidated verdict — one finding per claim type.</p>
     <div style="font-family:monospace;font-size:12px;line-height:1.8;">
-      {% for claim in all_claims %}
+      {% for claim in graph_claims %}
       {% set color_class = state_class(claim.state) %}
       <div>
         <span class="state-badge {{ color_class }}">{{ claim.state.value[:3] }}</span>
@@ -463,7 +473,7 @@ function replayEntryHTML(e) {
   } else if (t === 'agent_decision') {
     detail = '[iter ' + (p.iteration||'') + '] ' + (p.action||'') + (p.rationale ? ' — ' + p.rationale.slice(0,80) : '');
   } else if (t === 'halt') {
-    detail = 'HALT: ' + (p.reason||'') + ' &mdash; ' + (p.corroborated_claims||0) + ' CORROBORATED in ' + (p.elapsed_seconds||0).toFixed(1) + 's';
+    detail = 'HALT: ' + (p.reason||'') + ' - ' + (p.corroborated_claims||0) + ' CORROBORATED in ' + (p.elapsed_seconds||0).toFixed(1) + 's';
   } else {
     detail = JSON.stringify(p).slice(0, 100);
   }
@@ -549,7 +559,7 @@ function replayFinish() {
   const corr = Object.values(claimStates).filter(s => s === 'CORROBORATED').length;
   const v = document.getElementById('replay-verdict');
   v.style.display = 'block';
-  v.innerHTML = '&#9989; Investigation complete &mdash; '
+  v.innerHTML = 'Investigation complete - '
     + corr + ' claim(s) CORROBORATED. '
     + 'Verdict derived from hash-chained audit evidence, not LLM assertion.';
 }
@@ -631,9 +641,24 @@ def generate(
     """Generate a self-contained HTML Case File."""
     summary = claim_graph.investigation_summary()
 
-    corroborated = claim_graph.corroborated_claims()
+    # Headline views present ONE representative per claim_type (distinct findings).
+    # Multiple rules can emit the same claim_type, so the raw claim list contains
+    # several instances of e.g. payload_executed in conflicting states. The full
+    # per-rule list is still shown in the Evidence Trace tab as the audit record.
     all_claims = claim_graph.claims
-    withheld = [c for c in all_claims if c.state != ClaimState.CORROBORATED]
+    distinct = claim_graph.distinct_findings()
+    corroborated = [c for c in distinct if c.state == ClaimState.CORROBORATED]
+    withheld = [c for c in distinct if c.state != ClaimState.CORROBORATED]
+
+    # Stat boxes reflect distinct findings so they match the cards below.
+    dist_counts = {s.value: sum(1 for c in distinct if c.state == s) for s in ClaimState}
+
+    # How many independent rule paths produced each claim_type (shown on the card
+    # as "corroborated via N independent paths" — turns the duplication into a
+    # strength signal instead of noise).
+    rule_path_counts: dict[str, int] = {}
+    for c in all_claims:
+        rule_path_counts[c.claim_type.value] = rule_path_counts.get(c.claim_type.value, 0) + 1
 
     attack_techniques = summary.get("attack_techniques", [])
     attack_layer_json = json.dumps(_build_attack_layer(attack_techniques, run_id))
@@ -668,6 +693,15 @@ def generate(
     except OSError:
         pass
 
+    # Order the timeline chronologically (by investigation iteration, then ledger
+    # seq). The ledger writes claim_state entries grouped per claim, so raw order
+    # is not temporal — sorting makes the self-correction read as it happened.
+    def _iter_key(rc: dict):
+        it = rc.get("iteration", 0)
+        sq = rc.get("seq", 0)
+        return (it if isinstance(it, int) else 0, sq if isinstance(sq, int) else 0)
+    ruling_changes.sort(key=_iter_key)
+
     integrity_match = evidence_sha_in and evidence_sha_in == evidence_sha_out
     integrity_class = "integrity-ok" if (integrity_match and chain_valid) else "integrity-fail"
     integrity_status = "VERIFIED" if (integrity_match and chain_valid) else "CHECK FAILED"
@@ -688,22 +722,33 @@ def generate(
 
     ledger_entries_json = json.dumps(ledger_entries)
 
+    # Derive stats from ledger when not passed in (launcher omission guard)
+    if tool_calls == 0:
+        tool_calls = sum(1 for e in ledger_entries if e.get("entry_type") == "tool_call")
+    if iterations == 0:
+        for _e in ledger_entries:
+            if _e.get("entry_type") == "halt":
+                iterations = _e.get("payload", {}).get("iteration", 0)
+                break
+
     tmpl = Template(HTML_TEMPLATE)
     html = tmpl.render(
         run_id=run_id,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         elapsed=f"{elapsed_seconds:.1f}",
         total_claims=len(all_claims),
-        corroborated_count=summary["state_distribution"].get("CORROBORATED", 0),
-        inference_count=summary["state_distribution"].get("INFERENCE", 0),
-        contradicted_count=summary["state_distribution"].get("CONTRADICTED", 0),
-        unresolved_count=summary["state_distribution"].get("UNRESOLVED", 0),
+        corroborated_count=dist_counts.get("CORROBORATED", 0),
+        inference_count=dist_counts.get("INFERENCE", 0),
+        contradicted_count=dist_counts.get("CONTRADICTED", 0),
+        unresolved_count=dist_counts.get("UNRESOLVED", 0),
         attack_techniques=attack_techniques,
         attack_layer_json=attack_layer_json,
         corroborated_claims=corroborated,
         withheld_claims=withheld,
         ruling_changes=ruling_changes,
         all_claims=all_claims,
+        graph_claims=distinct,
+        rule_path_counts=rule_path_counts,
         ledger_entries=ledger_entries,
         ledger_entries_json=ledger_entries_json,
         evidence_sha_in=evidence_sha_in,

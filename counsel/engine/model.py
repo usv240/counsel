@@ -219,6 +219,56 @@ class ClaimGraph:
     def unresolved_claims(self) -> list[Claim]:
         return [c for c in self.claims if c.state == ClaimState.UNRESOLVED]
 
+    def distinct_findings(self) -> list[Claim]:
+        """
+        Collapse claims to one representative per claim_type for presentation.
+
+        Multiple rules can emit the same claim_type, so the raw claim list contains
+        several instances of (say) payload_executed in different states. For a verdict
+        view that is confusing. This returns the single strongest claim per type, by
+        the precedence below, with highest support as the tiebreak. The full per-rule
+        claim list (self.claims) is untouched and remains the complete audit record.
+
+        Precedence (a definitive ruling outranks a tentative one):
+          CORROBORATED > CONTRADICTED > INFERENCE > UNRESOLVED > OBSERVED
+
+        Side effect for the demo: a phantom zero-evidence duplicate (e.g. a second
+        c2_communication left UNRESOLVED with no evidence) is absorbed by the
+        corroborated instance of the same type, so it never shows in the summary.
+        """
+        precedence = {
+            ClaimState.CORROBORATED: 4,
+            ClaimState.CONTRADICTED: 3,
+            ClaimState.INFERENCE: 2,
+            ClaimState.UNRESOLVED: 1,
+            ClaimState.OBSERVED: 0,
+        }
+        best: dict[str, Claim] = {}
+        for c in self.claims:
+            key = c.claim_type.value
+            cur = best.get(key)
+            if cur is None:
+                best[key] = c
+                continue
+            rank_new = (precedence.get(c.state, 0), c.support_score, len(c.evidence))
+            rank_cur = (precedence.get(cur.state, 0), cur.support_score, len(cur.evidence))
+            if rank_new > rank_cur:
+                best[key] = c
+        # Stable order: corroborated first (by support desc), then the rest.
+        findings = list(best.values())
+        findings.sort(
+            key=lambda c: (precedence.get(c.state, 0), c.support_score),
+            reverse=True,
+        )
+        return findings
+
+    def distinct_corroborated(self) -> list[Claim]:
+        return [c for c in self.distinct_findings() if c.state == ClaimState.CORROBORATED]
+
+    def distinct_withheld(self) -> list[Claim]:
+        """Distinct findings the engine did NOT corroborate (the anti-hallucination set)."""
+        return [c for c in self.distinct_findings() if c.state != ClaimState.CORROBORATED]
+
     def investigation_summary(self) -> dict:
         state_counts = {}
         for s in ClaimState:
