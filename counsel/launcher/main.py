@@ -339,6 +339,38 @@ def serve(
 
 
 @app.command()
+def demo(
+    case: str = typer.Option("szechuan_sauce", help="Fixture case under counsel/fixtures/"),
+    output_dir: Path = typer.Option(Path("./counsel-output"), help="Output directory"),
+) -> None:
+    """No-API demonstration: replay recorded case fixtures through the corroboration
+    engine. Same verdict the live agent reaches - signed ledger + HTML case file -
+    with NO ANTHROPIC_API_KEY required. The fastest way for a judge to see it work."""
+    from .demo import run_demo
+
+    tui.print_banner()
+    console.print(f"[purple]No-API demonstration - case: {case}[/purple]")
+    console.print("[dim]Replaying recorded forensic tool outputs through the live corroboration engine.[/dim]\n")
+
+    result = run_demo(case, output_dir)
+
+    tui.print_verdict(result["claim_graph"], result["elapsed"], result["run_id"])
+    tui.print_claims_table(result["claim_graph"])
+    chain_color = "green" if result["chain_valid"] else "red"
+    console.print(
+        f"\n[{chain_color}]Ledger hash-chain: {'VALID' if result['chain_valid'] else 'INVALID'}[/]"
+        f"  |  Tool calls: {result['tool_calls']}"
+        f"  |  Corroborated: {len(result['corroborated'])}"
+        f"  |  Withheld: {len(result['withheld'])}"
+    )
+    console.print(f"[green]HTML Case File:[/green] {result['report_path']}")
+    console.print(
+        "[dim]This run used no API key. For a live autonomous run, see "
+        "'counsel investigate' (requires ANTHROPIC_API_KEY).[/dim]"
+    )
+
+
+@app.command()
 def verify_package(
     package: Path = typer.Argument(..., help="Path to .tar.gz case package"),
     public_key: Path = typer.Argument(..., help="Path to Ed25519 public key PEM"),

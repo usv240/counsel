@@ -45,5 +45,4 @@ ideas/
 Rules.md
 
 # Local dev helpers (not part of the product)
-regenerate_case.py
 verify_*.py

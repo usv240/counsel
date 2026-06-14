@@ -26,7 +26,33 @@ Built for the **SANS FIND EVIL! 2026 Hackathon** ($22K prizes, June 2026).
 
 ---
 
-## Quick Start (SIFT Workstation)
+## 60-Second Demo (No API Key)
+
+The fastest way to see COUNSEL work. This replays recorded forensic tool outputs
+from the SANS Szechuan Sauce case through the **real corroboration engine** and
+produces a signed, hash-chained case file - no `ANTHROPIC_API_KEY`, no SIFT setup:
+
+```bash
+git clone https://github.com/usv240/counsel
+cd counsel
+pip install -e .
+
+counsel demo            # or: make demo
+```
+
+In ~2 seconds you get the full 5-state verdict (8 findings CORROBORATED, lateral
+movement CONTRADICTED, credential access WITHHELD), a VALID ledger hash-chain, and
+an HTML case file under `counsel-output/`. The engine and verdict are identical to a
+live agent run; only the tool *outputs* are pre-recorded. Run the test suite the same
+way - no key needed:
+
+```bash
+make test               # 58 tests: engine, corroboration math, signed ledger, bypass defense
+```
+
+---
+
+## Quick Start (SIFT Workstation, live agent)
 
 ```bash
 # Install
@@ -291,8 +317,8 @@ Full report (incl. real self-correction examples and "Hallucinations We Caught")
 - [x] Written Description (`docs/written-description.md`)
 - [x] Dataset Documentation (`docs/dataset-docs.md`)
 - [x] Accuracy Report (`docs/accuracy-report.md`) - fixture-mode live run complete, real SIFT run pending
-- [x] Try-It-Out Instructions (this README Quick Start)
-- [x] Agent Execution Logs - `counsel-output/<run-id>/counsel-ledger.jsonl` (hash-chained, per-tool-call timestamps + seq); canonical signed run `ce1fe642-986` includes `manifest_*.json` (Ed25519-signed, `Verification: PASSED`) and a sealed `counsel_case_*.tar.gz`
+- [x] Try-It-Out Instructions - `counsel demo` (no API key) or the SIFT Quick Start (live agent) above
+- [x] Agent Execution Logs - committed example at `docs/sample-execution-log.md`; every `counsel demo` / `counsel investigate` run writes `counsel-output/<run-id>/counsel-ledger.jsonl` (hash-chained, per-tool-call timestamps + seq, every finding traceable to its tool execution). A live `counsel investigate --signing-key ...` run additionally emits an Ed25519-signed `manifest_*.json` (`Verification: PASSED`) and a sealed `counsel_case_*.tar.gz`
 
 ---
 
