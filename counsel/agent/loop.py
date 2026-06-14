@@ -16,6 +16,7 @@ Design notes:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -240,6 +241,9 @@ class CounselLoop:
         # across the whole run. This is the evidence_map passed to compute_confidence.
         self._artifact_records: dict[str, tuple[EvidenceRef, dict]] = {}
         self._end_turn_nudges = 0
+        # Thinking blocks collected during the run; written to ledger by Launcher post-run
+        # to avoid hash-chain corruption from a concurrent Ledger instance.
+        self._thinking_records: list[dict] = []
 
     def _get_client(self) -> anthropic.Anthropic:
         if self._client is None:
@@ -484,6 +488,32 @@ class CounselLoop:
                         thinking={"type": "enabled", "budget_tokens": 10000},
                     ) as stream:
                         response = stream.get_final_message()
+
+                    # Extract extended-thinking blocks and store for ledger (written post-run
+                    # by Launcher to avoid dual-process hash chain corruption).
+                    next_tool = next(
+                        (b.name for b in response.content if getattr(b, "type", "") == "tool_use"),
+                        None,
+                    )
+                    next_tool_use_id = next(
+                        (b.id for b in response.content if getattr(b, "type", "") == "tool_use"),
+                        None,
+                    )
+                    for block in response.content:
+                        if getattr(block, "type", "") == "thinking":
+                            text = getattr(block, "thinking", "") or ""
+                            sha = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+                            self._thinking_records.append({
+                                "iteration": iteration,
+                                "thinking_sha256": sha,
+                                "thinking_len": len(text),
+                                "tool_use_id": next_tool_use_id,
+                                "next_tool": next_tool,
+                            })
+                            logger.debug(
+                                "Thinking block logged iter=%d sha=%s…  len=%d next_tool=%s",
+                                iteration, sha[:16], len(text), next_tool,
+                            )
 
                     messages.append({"role": "assistant", "content": response.content})
 

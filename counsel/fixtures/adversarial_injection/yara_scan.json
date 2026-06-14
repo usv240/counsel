@@ -1,0 +1,11 @@
+[
+  {
+    "path": "Users/Public/svchost_b.exe",
+    "rule": "CobaltStrike_Beacon_v4",
+    "meta_description": "Cobalt Strike Beacon version 4.x",
+    "meta_author": "SANS DFIR Research",
+    "tags": ["CobaltStrike", "C2", "RAT"],
+    "strings_matched": ["4d5a", "license.txt", "ReflectiveLoader"],
+    "match_offset": 0
+  }
+]

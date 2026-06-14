@@ -1,0 +1,12 @@
+[
+  {
+    "pid": "1284",
+    "name": "svchost_b.exe",
+    "address": "0x7ff980000000",
+    "size": "4096",
+    "protection": "PAGE_EXECUTE_READWRITE",
+    "vad_tag": "VadS",
+    "hexdump_preview": "4d5a90000300000004000000ffff0000b800000000000000400000000000000000000000000000000000000000000000",
+    "lsass_injection": false
+  }
+]

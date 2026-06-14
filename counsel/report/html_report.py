@@ -116,6 +116,40 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .integrity-ok { background: #0d3d1a; border: 1px solid var(--green); color: var(--green); }
     .integrity-fail { background: #3d0d0d; border: 1px solid var(--red); color: var(--red); }
 
+    /* Replay player */
+    #replay-player { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    #replay-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    #replay-controls button { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 7px 16px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 13px; transition: border-color 0.15s, background 0.15s; }
+    #replay-controls button:hover { border-color: var(--blue); background: #1c2128; }
+    #replay-controls button.primary { border-color: var(--blue); color: var(--blue); }
+    #replay-speed { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 4px; font-family: inherit; font-size: 12px; }
+    #replay-progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+    #replay-progress-fill { height: 100%; background: var(--blue); width: 0%; transition: width 0.2s; }
+    #replay-counter { color: var(--dim); font-size: 12px; margin-left: auto; }
+    #replay-feed { max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 8px; }
+    .replay-entry { padding: 7px 10px; border-bottom: 1px solid #21262d; font-size: 12px; line-height: 1.5; opacity: 0; transform: translateY(6px); transition: opacity 0.25s ease, transform 0.25s ease; }
+    .replay-entry.visible { opacity: 1; transform: translateY(0); }
+    .replay-entry .re-seq { color: var(--dim); min-width: 36px; display: inline-block; }
+    .replay-entry .re-type { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 8px; }
+    .re-genesis   { background: #1a2a3a; color: var(--blue); }
+    .re-tool_call { background: #1a2a1a; color: var(--green); }
+    .re-claim_state { background: #2a1a2a; color: var(--purple); }
+    .re-agent_thinking { background: #2a2a1a; color: var(--yellow); }
+    .re-agent_decision { background: #1a1a2a; color: #79c0ff; }
+    .re-halt { background: #2a1a1a; color: var(--red); }
+    .replay-claim-change { margin-top: 4px; font-size: 11px; }
+    .replay-claim-change .from-state { color: var(--yellow); }
+    .replay-claim-change .to-state { color: var(--green); font-weight: bold; }
+    #replay-verdict { display: none; padding: 14px 20px; border-radius: 6px; margin-top: 14px; background: #0d3d1a; border: 1px solid var(--green); color: var(--green); font-weight: bold; font-size: 14px; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    #claim-scoreboard { display: none; margin-top: 14px; }
+    #claim-scoreboard h3 { color: var(--blue); font-size: 13px; margin-bottom: 10px; }
+    .claim-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #21262d; font-size: 12px; }
+    .claim-indicator { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: background 0.4s; flex-shrink: 0; }
+    .claim-indicator.cor { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .claim-indicator.inf { background: var(--yellow); }
+    .claim-indicator.obs { background: var(--dim); }
+
     @media (max-width: 700px) {
       header { padding: 16px 20px; }
       header h1 { font-size: 1.3rem; }
@@ -145,6 +179,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <button onclick="showTab('evidence', this)">Evidence Trace</button>
   <button onclick="showTab('graph', this)">Corroboration Graph</button>
   <button onclick="showTab('ledger', this)">Audit Ledger</button>
+  <button onclick="showTab('replay', this)">&#9654; Investigation Replay</button>
 </nav>
 
 <!-- ═══ SUMMARY ═══ -->
@@ -324,12 +359,50 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
 </section>
 
+<!-- ═══ INVESTIGATION REPLAY ═══ -->
+<section id="replay">
+  <div id="replay-player">
+    <h2 style="color:var(--blue);margin-bottom:6px;">Investigation Replay</h2>
+    <p style="color:var(--dim);font-size:12px;margin-bottom:14px;">
+      Watch COUNSEL re-derive its verdict from raw evidence, one ledger entry at a time.
+      Claim states evolve live as independent evidence groups accumulate.
+      Each RULING CHANGE (yellow&#8594;green) reflects the corroboration engine firing —
+      not an LLM assertion.
+    </p>
+    <div id="replay-controls">
+      <button class="primary" id="btn-play" onclick="replayPlay()">&#9654; Play</button>
+      <button id="btn-pause" onclick="replayPause()" style="display:none">&#10074;&#10074; Pause</button>
+      <button onclick="replayStep()">&#9654;&#10073; Step</button>
+      <button onclick="replayReset()">&#8634; Reset</button>
+      <label style="color:var(--dim);font-size:12px;">Speed:
+        <select id="replay-speed" onchange="replaySetSpeed(this.value)">
+          <option value="1200">Slow</option>
+          <option value="600" selected>Normal</option>
+          <option value="250">Fast</option>
+          <option value="80">Turbo</option>
+        </select>
+      </label>
+      <span id="replay-counter" style="color:var(--dim);font-size:12px;">0 / 0</span>
+    </div>
+    <div id="replay-progress-bar"><div id="replay-progress-fill"></div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div id="replay-feed" style="flex:2;min-width:280px;"></div>
+      <div id="claim-scoreboard" style="flex:1;min-width:200px;">
+        <h3>Claim States</h3>
+        <div id="claim-rows"></div>
+      </div>
+    </div>
+    <div id="replay-verdict"></div>
+  </div>
+</section>
+
 <script>
 function showTab(id, btn) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
+  if (id === 'replay' && !replayInitialized) replayInit();
 }
 function filterLedger(q) {
   const rows = document.querySelectorAll('.ledger-row');
@@ -348,6 +421,137 @@ function downloadAttackLayer() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ── Investigation Replay Engine ──────────────────────────────────────────────
+const REPLAY_ENTRIES = {{ ledger_entries_json }};
+let replayIdx = 0;
+let replayTimer = null;
+let replaySpeed = 600;
+let replayInitialized = false;
+const claimStates = {};  // claim_type -> current state badge class
+
+function replayInit() {
+  replayInitialized = true;
+  replayReset();
+  document.getElementById('claim-scoreboard').style.display = 'block';
+}
+
+function replayEntryHTML(e) {
+  const t = e.entry_type;
+  const p = e.payload || {};
+  let detail = '';
+
+  if (t === 'genesis') {
+    detail = 'Evidence sealed: SHA256=' + (p.evidence_sha256_in||'').slice(0,24) + '&hellip;';
+  } else if (t === 'tool_call') {
+    const q = p.parse_quality != null ? (p.parse_quality*100).toFixed(0)+'%' : '';
+    detail = p.tool + ' &rarr; ' + (p.record_count||0) + ' records' + (q ? ' quality='+q : '');
+    if (p.warnings && p.warnings.length) detail += ' <span style="color:var(--yellow)">['+p.warnings[0].slice(0,60)+'&hellip;]</span>';
+  } else if (t === 'agent_thinking') {
+    detail = 'Extended thinking &rarr; ' + (p.next_tool||'(no tool)') + ' | sha256=' + (p.thinking_sha256||'').slice(0,16) + '&hellip; len=' + (p.thinking_len||0);
+  } else if (t === 'claim_state') {
+    const from = p.from_state||'?', to = p.to_state||'?';
+    const arrow = to === 'CORROBORATED'
+      ? '<span class="to-state">' + to + '</span>'
+      : '<span style="color:var(--text)">' + to + '</span>';
+    detail = '<strong>' + (p.claim_type||'') + '</strong> &nbsp;'
+           + '<span class="from-state">' + from + '</span>'
+           + ' &rarr; ' + arrow
+           + ' <span style="color:var(--dim)">support=' + (p.support||0).toFixed(2) + '</span>';
+    updateClaimScoreboard(p.claim_type, to);
+  } else if (t === 'agent_decision') {
+    detail = '[iter ' + (p.iteration||'') + '] ' + (p.action||'') + (p.rationale ? ' — ' + p.rationale.slice(0,80) : '');
+  } else if (t === 'halt') {
+    detail = 'HALT: ' + (p.reason||'') + ' &mdash; ' + (p.corroborated_claims||0) + ' CORROBORATED in ' + (p.elapsed_seconds||0).toFixed(1) + 's';
+  } else {
+    detail = JSON.stringify(p).slice(0, 100);
+  }
+
+  return '<span class="re-seq">#' + e.seq + '</span>'
+       + '<span class="re-type re-' + t + '">' + t.replace('_',' ') + '</span>'
+       + '<span class="re-ts" style="color:var(--dim);font-size:10px;margin-right:8px">' + (e.ts||'').slice(11,19) + '</span>'
+       + detail;
+}
+
+function updateClaimScoreboard(claimType, newState) {
+  if (!claimType) return;
+  claimStates[claimType] = newState;
+  const rows = document.getElementById('claim-rows');
+  rows.innerHTML = '';
+  Object.entries(claimStates).forEach(([ct, st]) => {
+    const cls = st === 'CORROBORATED' ? 'cor' : st === 'INFERENCE' ? 'inf' : 'obs';
+    rows.innerHTML += '<div class="claim-row">'
+      + '<div class="claim-indicator ' + cls + '"></div>'
+      + '<span style="flex:1">' + ct + '</span>'
+      + '<span class="state-badge state-' + st.slice(0,3).toLowerCase() + '" style="font-size:10px">' + st.slice(0,3) + '</span>'
+      + '</div>';
+  });
+}
+
+function replayStep() {
+  if (replayIdx >= REPLAY_ENTRIES.length) { replayFinish(); return; }
+  const e = REPLAY_ENTRIES[replayIdx];
+  const feed = document.getElementById('replay-feed');
+  const div = document.createElement('div');
+  div.className = 'replay-entry';
+  div.innerHTML = replayEntryHTML(e);
+  feed.appendChild(div);
+  setTimeout(() => div.classList.add('visible'), 20);
+  feed.scrollTop = feed.scrollHeight;
+
+  replayIdx++;
+  const pct = REPLAY_ENTRIES.length ? (replayIdx / REPLAY_ENTRIES.length * 100) : 0;
+  document.getElementById('replay-progress-fill').style.width = pct + '%';
+  document.getElementById('replay-counter').textContent = replayIdx + ' / ' + REPLAY_ENTRIES.length;
+
+  if (replayIdx >= REPLAY_ENTRIES.length) replayFinish();
+}
+
+function replayPlay() {
+  if (replayIdx >= REPLAY_ENTRIES.length) replayReset();
+  document.getElementById('btn-play').style.display = 'none';
+  document.getElementById('btn-pause').style.display = '';
+  replayTick();
+}
+
+function replayTick() {
+  replayStep();
+  if (replayIdx < REPLAY_ENTRIES.length) {
+    replayTimer = setTimeout(replayTick, replaySpeed);
+  }
+}
+
+function replayPause() {
+  clearTimeout(replayTimer);
+  replayTimer = null;
+  document.getElementById('btn-play').style.display = '';
+  document.getElementById('btn-pause').style.display = 'none';
+}
+
+function replayReset() {
+  replayPause();
+  replayIdx = 0;
+  document.getElementById('replay-feed').innerHTML = '';
+  document.getElementById('replay-progress-fill').style.width = '0%';
+  document.getElementById('replay-counter').textContent = '0 / ' + REPLAY_ENTRIES.length;
+  document.getElementById('replay-verdict').style.display = 'none';
+  document.getElementById('claim-rows').innerHTML = '';
+  Object.keys(claimStates).forEach(k => delete claimStates[k]);
+  document.getElementById('btn-play').style.display = '';
+  document.getElementById('btn-pause').style.display = 'none';
+}
+
+function replaySetSpeed(v) { replaySpeed = parseInt(v, 10); }
+
+function replayFinish() {
+  replayPause();
+  const corr = Object.values(claimStates).filter(s => s === 'CORROBORATED').length;
+  const v = document.getElementById('replay-verdict');
+  v.style.display = 'block';
+  v.innerHTML = '&#9989; Investigation complete &mdash; '
+    + corr + ' claim(s) CORROBORATED. '
+    + 'Verdict derived from hash-chained audit evidence, not LLM assertion.';
 }
 </script>
 </body>
@@ -401,6 +605,12 @@ def _entry_summary(entry: dict) -> str:
         )
     elif etype == "agent_decision":
         return f"[iter {payload.get('iteration', '')}] {payload.get('action', '')} - {payload.get('rationale', '')[:60]}"
+    elif etype == "agent_thinking":
+        return (
+            f"[iter {payload.get('iteration', '')}] Thinking block "
+            f"sha256={payload.get('thinking_sha256', '')[:16]}… "
+            f"len={payload.get('thinking_len', 0)} → next={payload.get('next_tool', '?')}"
+        )
     elif etype == "halt":
         return f"HALT: {payload.get('reason', '')} - {payload.get('corroborated_claims', 0)} corroborated"
     return json.dumps(payload)[:80]
@@ -476,6 +686,8 @@ def generate(
     except OSError:
         pass
 
+    ledger_entries_json = json.dumps(ledger_entries)
+
     tmpl = Template(HTML_TEMPLATE)
     html = tmpl.render(
         run_id=run_id,
@@ -493,6 +705,7 @@ def generate(
         ruling_changes=ruling_changes,
         all_claims=all_claims,
         ledger_entries=ledger_entries,
+        ledger_entries_json=ledger_entries_json,
         evidence_sha_in=evidence_sha_in,
         evidence_sha_out=evidence_sha_out,
         integrity_class=integrity_class,

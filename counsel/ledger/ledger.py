@@ -212,6 +212,32 @@ class Ledger:
             "elapsed_seconds": round(elapsed_seconds, 2),
         })
 
+    def append_agent_thinking(
+        self,
+        iteration: int,
+        thinking_sha256: str,
+        thinking_len: int,
+        tool_use_id: Optional[str] = None,
+        next_tool: Optional[str] = None,
+    ) -> LedgerEntry:
+        """Record an agent extended-thinking block as a hash-chained audit entry.
+
+        The actual thinking text is NOT stored (it can be very large and contains
+        the agent's internal reasoning). Only its SHA256 hash is persisted, making
+        the ledger tamper-evident without bloating it. The hash proves the thinking
+        block existed and was unchanged at the time it was hashed.
+
+        Stored alongside the tool_use_id and next tool so an auditor can map each
+        thinking block to the subsequent forensic tool call.
+        """
+        return self._append("agent_thinking", {
+            "iteration": iteration,
+            "thinking_sha256": thinking_sha256,
+            "thinking_len": thinking_len,
+            "tool_use_id": tool_use_id,
+            "next_tool": next_tool,
+        })
+
     def head_hash(self) -> str:
         return self._last_hash
 

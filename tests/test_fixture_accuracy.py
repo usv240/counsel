@@ -1,16 +1,18 @@
 """
-End-to-end accuracy test against the 'Stolen Szechuan Sauce' fixture set -
-no Anthropic API key required.
+End-to-end accuracy tests for COUNSEL fixture sets — no Anthropic API key required.
+
+Case 1: 'Stolen Szechuan Sauce' (szechuan_sauce/) — 5 TP / 2 TN
+Case 2: 'Operation Weaponized Evidence' (adversarial_injection/) — 5 TP / 1 TN
+  Adversarial fixture: evidence artifacts contain prompt injection attempts
+  (adversarial filenames, registry values with override instructions, event log
+  entries with synthetic CORROBORATED claims). The corroboration engine must
+  produce the correct verdicts despite this, demonstrating parse-before-return
+  sanitization and the mathematical independence requirement work together.
 
 Feeds every fixture tool result through CounselLoop._update_claim_from_tool_result
 (the same code path the live agent loop uses after each MCP tool call) in a
-TRIAGE-first order, then checks the resulting claim graph against
-counsel/fixtures/szechuan_sauce/answer_key.json via the bench harness.
-
-This is the regression test for the evidence_map / rule-grouping / subject
-fixes: it proves the engine reaches CORROBORATED on the 5 true positives and
-withholds CORROBORATED on the 2 true negatives using real fixture data, with
-no LLM involved.
+TRIAGE-first order, then checks the resulting claim graph against the locked
+answer_key.json via the bench harness.
 """
 from __future__ import annotations
 
@@ -108,4 +110,71 @@ def test_accuracy_report(claim_graph):
     # Precision: every graded CORROBORATED claim should match a true positive.
     assert metrics.precision == 1.0, metrics.to_dict()
     # FPR: neither true negative should be hallucinated as CORROBORATED.
+    assert metrics.fpr == 0.0, metrics.to_dict()
+
+
+# ── Case 2: Adversarial Injection ("Operation Weaponized Evidence") ──────────
+
+ADV_FIXTURE_DIR = Path(__file__).resolve().parents[1] / "counsel" / "fixtures" / "adversarial_injection"
+
+ADV_TOOL_ORDER = [
+    ("registry_run_keys", "registry.run_keys"),
+    ("prefetch_run_record", "prefetch.run_record"),
+    ("mft_timeline", "mft.timeline"),
+    ("amcache_lookup", "amcache.lookup"),
+    ("fs_stat_hash", "fs.stat_hash"),
+    ("yara_scan", "yara.scan"),
+    ("mem_pslist", "mem.pslist"),
+    ("mem_netscan", "mem.netscan"),
+    ("mem_malfind", "mem.malfind"),
+    ("net_flows", "net.flows"),
+    ("evtx_query", "evtx.query"),
+]
+
+
+@pytest.fixture(scope="module")
+def adv_claim_graph():
+    """Adversarial fixture: evidence contains prompt injection attempts."""
+    os.environ["COUNSEL_FIXTURE_DIR"] = str(ADV_FIXTURE_DIR)
+    try:
+        config = LoopConfig(run_id="adv-eval", rules_dir=RULES_DIR)
+        loop = CounselLoop(config)
+        loop._load_rules()
+
+        for iteration, (fixture_stem, artifact_name) in enumerate(ADV_TOOL_ORDER, start=1):
+            result = load_fixture_result(fixture_stem, config.run_id, "", artifact_name=artifact_name)
+            assert result is not None, f"missing adversarial fixture: {fixture_stem}.json"
+            loop._update_claim_from_tool_result(result.to_dict(), iteration)
+
+        return loop.claim_graph
+    finally:
+        os.environ.pop("COUNSEL_FIXTURE_DIR", None)
+
+
+@pytest.mark.parametrize("claim_type", [
+    "persistence_configured",
+    "payload_executed",
+    "payload_present",
+    "payload_active",
+    "c2_communication",
+])
+def test_adv_true_positive_corroborated(adv_claim_graph, claim_type):
+    """Real malware indicators are correctly CORROBORATED despite adversarial noise."""
+    assert _claim_state(adv_claim_graph, claim_type) == ClaimState.CORROBORATED
+
+
+def test_adv_injection_blocked_credential_access(adv_claim_graph):
+    """Adversarial injection strings in registry/MFT/EVTX must NOT produce a
+    CORROBORATED credential_access claim.  The parse-before-return sanitizer
+    strips control chars; the corroboration engine still requires independent
+    evidence groups (lsass_injection, hive_access, cred_dump_artifact) — none
+    of which are present in this fixture."""
+    assert _claim_state(adv_claim_graph, "credential_access") != ClaimState.CORROBORATED
+
+
+def test_adv_accuracy_report(adv_claim_graph):
+    answer_key = AnswerKey.load(ADV_FIXTURE_DIR / "answer_key.json")
+    metrics = evaluate(adv_claim_graph, answer_key)
+    assert metrics.recall == 1.0, metrics.to_dict()
+    assert metrics.precision == 1.0, metrics.to_dict()
     assert metrics.fpr == 0.0, metrics.to_dict()

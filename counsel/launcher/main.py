@@ -171,11 +171,19 @@ def investigate(
     claim_graph = asyncio.run(loop.run())
     elapsed = time.monotonic() - start
 
-    # Write claim_state transitions and halt entry after the MCP server subprocess
-    # has exited (stdio_client context closed inside loop.run()).
+    # Write thinking blocks, claim_state transitions, and halt entry after the MCP
+    # server subprocess has exited (stdio_client context closed inside loop.run()).
     # A fresh Ledger instance calls _resume() to continue the chain after the
     # MCP server's last tool_call entry.
     post_ledger = Ledger(ledger_path, run_id)
+    for tr in loop._thinking_records:
+        post_ledger.append_agent_thinking(
+            iteration=tr["iteration"],
+            thinking_sha256=tr["thinking_sha256"],
+            thinking_len=tr["thinking_len"],
+            tool_use_id=tr.get("tool_use_id"),
+            next_tool=tr.get("next_tool"),
+        )
     for claim in claim_graph.claims:
         for sc in claim.history:
             post_ledger.append_claim_state(

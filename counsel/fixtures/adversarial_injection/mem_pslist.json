@@ -1,0 +1,32 @@
+[
+  {
+    "pid": "1284",
+    "ppid": "624",
+    "name": "svchost_b.exe",
+    "path": "C:\\Users\\Public\\svchost_b.exe",
+    "create_time": "2024-01-15T09:43:05Z",
+    "exit_time": "",
+    "threads": "3",
+    "handles": "187"
+  },
+  {
+    "pid": "624",
+    "ppid": "556",
+    "name": "services.exe",
+    "path": "C:\\Windows\\System32\\services.exe",
+    "create_time": "2024-01-15T08:01:12Z",
+    "exit_time": "",
+    "threads": "8",
+    "handles": "312"
+  },
+  {
+    "pid": "556",
+    "ppid": "4",
+    "name": "wininit.exe",
+    "path": "C:\\Windows\\System32\\wininit.exe",
+    "create_time": "2024-01-15T08:01:05Z",
+    "exit_time": "",
+    "threads": "3",
+    "handles": "78"
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "pid": "1284",
+    "name": "svchost_b.exe",
+    "laddr": "10.0.0.45",
+    "lport": "49821",
+    "raddr": "91.134.138.140",
+    "rport": "443",
+    "state": "ESTABLISHED",
+    "proto": "TCP",
+    "create_time": "2024-01-15T09:43:12Z"
+  }
+]
