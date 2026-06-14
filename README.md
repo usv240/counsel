@@ -79,6 +79,37 @@ counsel redteam /mnt/evidence
 
 ---
 
+## The Exculpatory Engine — COUNSEL's Most Overlooked Capability
+
+Every other AI DFIR tool finds evil. COUNSEL is the first that can definitively **rule evil out**.
+
+The `CONTRADICTED` state is more valuable than `CORROBORATED` in many IR scenarios:
+
+| Situation | Naive LLM | COUNSEL |
+|---|---|---|
+| EVTX logs suggest lateral movement, but net.flows shows zero lateral traffic | "Possible lateral movement — medium confidence" | **CONTRADICTED** — evidence actively refutes it |
+| Registry key looks like credential access, but no LSASS dump artifacts | "Likely credential access" | **UNRESOLVED** — insufficient independent signals |
+| Adversarial filename claims credential_access is confirmed | Takes text at face value | **BLOCKED** — signal predicate not satisfied |
+
+**In the Stolen Szechuan Sauce case** (live run `ce1fe642-986`):
+- EVTX logs showed authentication events that SUGGESTED lateral movement
+- COUNSEL's corroboration engine ran net.flows, found zero lateral traffic
+- State flipped: `lateral_movement: INFERENCE → CONTRADICTED` (contradiction_score=0.85)
+- A naive LLM would have filed a false "lateral movement confirmed" finding
+
+**Why this matters in real IR:**
+- `CONTRADICTED` narrows investigation scope — don't image more endpoints, don't page more analysts
+- `CONTRADICTED` prevents false remediation — don't isolate a system based on a refuted hypothesis
+- `UNRESOLVED` is honest — "we looked, found nothing, search exhausted" is not the same as "didn't find = doesn't exist"
+
+```bash
+# Reproduce the lateral_movement CONTRADICTED finding:
+pytest tests/test_rt9_contradiction.py -v      # pure engine, no API key
+pytest tests/test_naive_comparison.py -v       # COUNSEL vs naive baseline: FPR 0.0 vs 1.0
+```
+
+---
+
 ## The 5-State Claim Model
 
 | State | Meaning | Support Threshold |

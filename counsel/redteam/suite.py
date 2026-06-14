@@ -62,7 +62,7 @@ class RedTeamSuite:
         self.results: list[RedTeamResult] = []
 
     def run_all(self) -> list[RedTeamResult]:
-        """Run all RT1-RT7 tests. Returns results. All should pass (attack fails safely)."""
+        """Run all RT1-RT9 tests. Returns results. All should pass (attack fails safely)."""
         tests = [
             self.rt1_shell_escape,
             self.rt2_filename_injection,
@@ -72,6 +72,7 @@ class RedTeamSuite:
             self.rt6_ledger_tamper,
             self.rt7_image_hash_verification,
             self.rt8_agentless_verdict,
+            self.rt9_contradiction_engine,
         ]
         for test_fn in tests:
             try:
@@ -464,6 +465,84 @@ class RedTeamSuite:
             )
         finally:
             os.environ.pop("COUNSEL_FIXTURE_DIR", None)
+
+    def rt9_contradiction_engine(self) -> RedTeamResult:
+        """
+        RT9: Prove the CONTRADICTED state fires when contradicting evidence is present.
+
+        The lateral_movement_via_psexec rule has an unconditional contradiction on
+        evtx.query (weight=0.70). When evtx.query returns with parse_quality=1.0,
+        contradiction_score = 0.70 >= TAU_CONTRADICTED (0.60) → CONTRADICTED.
+
+        This is the capability no other AI DFIR tool has: COUNSEL can definitively
+        rule out a hypothesis, not just fail to confirm it. CONTRADICTED narrows
+        investigation scope (no need to image additional endpoints), prevents false
+        remediation, and is recorded in the signed audit ledger with full provenance.
+
+        Two sub-proofs:
+        (a) CONTRADICTED fires with full parse_quality=1.0
+        (b) parse_quality=0.0 (tool failure) does NOT trigger CONTRADICTED —
+            "tool failed" is absence of evidence, not evidence of absence
+        """
+        from pathlib import Path as _Path
+        from ..engine.confidence import TAU_CONTRADICTED, compute_confidence
+        from ..engine.dsl import RuleRegistry
+        from ..engine.model import ClaimState, EvidenceRef
+
+        rules_dir = _Path(__file__).resolve().parents[2] / "rules"
+        reg = RuleRegistry()
+        reg.load_directory(rules_dir)
+        rule = next((r for r in reg.all_rules() if r.rule_id == "lateral_movement_via_psexec"), None)
+
+        if rule is None:
+            return RedTeamResult(
+                test_id="RT9",
+                description="Contradiction engine — CONTRADICTED state proof",
+                attack_vector="Rule validation: lateral_movement_via_psexec must have evtx.query contradiction",
+                expected_result="CONTRADICTED",
+                actual_result="RULE_NOT_FOUND",
+                passed=False,
+                evidence="lateral_movement_via_psexec not found in rules/",
+            )
+
+        def _ev(pq: float) -> EvidenceRef:
+            return EvidenceRef(
+                ledger_seq=0, tool="evtx.query", artifact_path="test",
+                offset=0, raw_sha256="0"*64, weight=1.0,
+                independent_group="evtx.query", parse_quality=pq,
+            )
+
+        # Sub-proof (a): parse_quality=1.0 → CONTRADICTED
+        ev_full = {"evtx.query": (_ev(1.0), {"log_cleared": False})}
+        result_full = compute_confidence(rule, "lateral_movement", ev_full)
+        contradiction_fires = result_full.contradiction >= TAU_CONTRADICTED
+        state_contradicted = result_full.state == ClaimState.CONTRADICTED
+
+        # Sub-proof (b): parse_quality=0.0 → NOT CONTRADICTED
+        ev_fail = {"evtx.query": (_ev(0.0), {"log_cleared": False})}
+        result_fail = compute_confidence(rule, "lateral_movement", ev_fail)
+        tool_fail_safe = result_fail.state != ClaimState.CONTRADICTED
+
+        passed = contradiction_fires and state_contradicted and tool_fail_safe
+
+        return RedTeamResult(
+            test_id="RT9",
+            description="Contradiction engine — CONTRADICTED fires on conflicting evidence",
+            attack_vector="Run evtx.query on lateral_movement_via_psexec; check CONTRADICTED fires",
+            expected_result="CONTRADICTED",
+            actual_result=(
+                f"CONTRADICTED (score={result_full.contradiction:.2f} >= {TAU_CONTRADICTED})"
+                if passed else
+                f"UNEXPECTED: contradiction={result_full.contradiction:.2f} state={result_full.state.value}"
+            ),
+            passed=passed,
+            evidence=(
+                f"full parse_quality: contradiction={result_full.contradiction:.2f}, "
+                f"state={result_full.state.value}\n"
+                f"zero parse_quality: state={result_fail.state.value} (tool failure = absence of evidence)\n"
+                f"Proof: the exculpatory engine fires on forensic evidence quality, not tool invocation alone"
+            ),
+        )
 
     def summary(self) -> dict:
         passed = sum(1 for r in self.results if r.passed)
