@@ -1,6 +1,57 @@
 # COUNSEL Architecture
 
-## Process Topology
+**Architectural Pattern**: Custom MCP Server (Pattern 2 per FIND EVIL! supported architectures)
+
+**Agent Runtime**: Claude Haiku 4.5 via Anthropic Python SDK -- 11 typed MCP tools, no shell, no write access
+
+## Visual Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    COUNSEL System Topology                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│   ┌─────────────────────────────────────────────────────────┐       │
+│   │                  Trusted Launcher                        │       │
+│   │  • Holds Ed25519 signing key (agent NEVER sees it)      │       │
+│   │  • Mounts evidence read-only: mount -o ro,loop          │       │
+│   │  • Computes evidence SHA256 hash_in (genesis entry)     │       │
+│   │  • Spawns MCP Server subprocess with run_id + env       │       │
+│   │  • After agent exit: calls External Verifier            │       │
+│   └──────────────┬──────────────────────────────────────────┘       │
+│                  │ spawns                                            │
+│         ┌────────▼────────┐  stdio/MCP   ┌────────────────────┐    │
+│         │   MCP Server    │◄────────────►│   Agent Runtime    │    │
+│         │  11 typed tools │              │  Claude Haiku 4.5  │    │
+│         │  parse-b4-return│              │  Python SDK        │    │
+│         │  read-only fs   │              │  NO shell          │    │
+│         │  appends ledger │              │  NO write mount    │    │
+│         └────────┬────────┘              │  CANNOT sign       │    │
+│                  │                       └────────────────────┘    │
+│                  ▼                                                   │
+│         ┌────────────────┐                                          │
+│         │ Ledger (JSONL) │                                          │
+│         │ hash-chained   │                                          │
+│         │ append-only    │                                          │
+│         └────────┬───────┘                                          │
+│                  │ after agent exit                                  │
+│                  ▼                                                   │
+│         ┌────────────────────┐   ┌──────────────────────────┐      │
+│         │ External Verifier  │──►│  Signed Case Package     │      │
+│         │ • re-hash evidence │   │  • ledger.jsonl          │      │
+│         │ • verify chain     │   │  • manifest_{run}.json   │      │
+│         │ • Ed25519 sign     │   │  • HTML case file        │      │
+│         └────────────────────┘   │  • .tar.gz archive       │      │
+│                                  └──────────────────────────┘      │
+│                                                                      │
+│  ══════════ TRUST BOUNDARIES ══════════                             │
+│  B1: Agent → Evidence ONLY via typed MCP functions (no file read)   │
+│  B2: Signing key in Launcher/Verifier only (agent cannot sign)      │
+│  B3: Agent has NO shell, NO exec, NO write mount (architectural)    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Process Topology (detailed)
 
 ```
                     +------------------+
@@ -71,8 +122,10 @@ The agent runtime has no shell, no arbitrary exec, no write mount.
 Even a fully successful prompt injection attack has no dangerous primitive
 to call. Capability isolation is the primary defense.
 
-**Enforcement**: Claude Code configured without bash/shell tools.
-Evidence mount is read-only at the OS level (mount -o ro).
+**Enforcement**: The agent runtime (Claude Haiku 4.5 via Anthropic Python SDK)
+is given exactly 11 MCP tool definitions -- no shell tool, no file-read tool,
+no exec primitive. This is enforced by the MCP server's tool manifest, not by
+prompt instructions. Evidence mount is read-only at the OS level (`mount -o ro`).
 MCP server tools are all read-only forensic parsers.
 
 ## Data Flow

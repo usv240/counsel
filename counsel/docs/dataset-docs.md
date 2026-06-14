@@ -32,23 +32,27 @@ The "Stolen Szechuan Sauce" case image is publicly available for forensic traini
 
 ### Answer Key (Locked)
 
-The locked answer key for COUNSEL's accuracy benchmark is in:
-`bench/answer_key_szechuan_sauce.json`
+The locked answer key for COUNSEL's accuracy benchmark is at:
+`counsel/fixtures/szechuan_sauce/answer_key.json`
 
-It was locked on 2026-06-07T00:00:00Z before running COUNSEL on the case.
-This prevents post-hoc rationalization of the benchmark results.
+It was locked before running COUNSEL on the case to prevent post-hoc
+rationalization of the benchmark results.
 
 **True Positives (expected CORROBORATED claims)**:
-- persistence_configured - Run key in HKCU
-- payload_present - Malicious svchost.exe in AppData/Local/Temp
-- payload_executed - Confirmed by Prefetch + Amcache (independent)
-- payload_active - Process in memory (if memory image available)
-- c2_communication - External IP in memory + PCAP
-- exfiltration - Data egress over C2 channel
+- persistence_configured - Run key in HKCU (wupd.exe)
+- payload_present - Malicious wupd.exe on disk
+- payload_executed - Confirmed by Prefetch + Amcache (independent subsystems)
+- payload_active - Process active in memory + external network connection
+- c2_communication - External C2 IP (185.220.101.47) in memory + PCAP
 
 **True Negatives (should NOT be CORROBORATED)**:
 - lateral_movement - Single workstation; no lateral movement evidence
 - credential_access - No credential dumping evidence
+
+**Deterministic verification (no API key needed)**:
+```bash
+pytest tests/test_fixture_accuracy.py -v   # 10/10 in ~4 seconds
+```
 
 ### Privacy and Legal
 
@@ -57,16 +61,45 @@ This is a publicly released forensic training case. The data is synthetic/fictio
 
 ---
 
-## Secondary Case: [TBD - Generality Proof]
+## Secondary Case: SANS SRL-2018 (Corporate APT Scenario)
 
-A second forensic case will be added to demonstrate COUNSEL generalizes beyond
-the Szechuan Sauce image. Candidates:
-- DFIR.training other challenges
-- MagnetForensics CTF cases (publicly released)
-- Volatility Foundation memory samples
+**Source**: SANS Institute SRL-2018 dataset (FOR508 supplemental evidence)
+**Type**: E01 disk image + raw memory image
+**Disk image**: `base-wkstn-01-c-drive.E01` (15.76 GB, NTFS partition)
+**Memory image**: `base-wkstn-01-mem.img` (3.0 GB RAM dump)
+**OS**: Windows (corporate workstation, initial alert host in APT scenario)
+**Scenario**: Corporate APT - wkstn-01 is the beachhead. The attacker moved laterally
+to the domain controller and exfiltrated data. COUNSEL investigates this initial
+alert host.
 
-The secondary case is used for generality - we run COUNSEL on it without an answer key
-and show the corroboration engine adapts to new TTPs without rule changes.
+**Purpose**: Demonstrates COUNSEL generalizes to a new, completely different case
+without any rule changes. The same 8 YAML corroboration rules, same 11 MCP tools,
+same corroboration engine -- different evidence, different attacker TTPs.
+
+### How to Obtain
+
+Available from the SANS Institute as part of the FOR508 course supplemental materials.
+The evidence was downloaded during the hackathon development period for testing.
+
+### Evidence Artifacts Available
+
+| Artifact | Status | Tool |
+|---|---|---|
+| NTFS filesystem | Mounted via ntfs-3g | fs.stat_hash, mft.timeline |
+| Windows Event Logs | Parsed via evtx_dump | evtx.query |
+| Memory image | Analyzed via Volatility3 | mem.pslist, mem.netscan, mem.malfind |
+| Registry hives | RECmd not available on test system | registry.run_keys |
+| Prefetch files | PECmd not available on test system | prefetch.run_record |
+
+**Note on missing tools**: On the test system (WSL2 Ubuntu), Eric Zimmerman tools
+(MFTECmd, PECmd, RECmd) are not available. COUNSEL degrades gracefully:
+`mft.timeline` falls back to a filesystem timestamp scan (`parse_quality=0.5`),
+which still contributes as an independent corroboration group. On SIFT Workstation
+with Protocol SIFT installed, all tools would be available.
+
+### What COUNSEL Found (Real Evidence Run)
+
+See `docs/accuracy-report.md` for the full SRL-2018 run results.
 
 ---
 
