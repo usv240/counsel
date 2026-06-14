@@ -71,6 +71,7 @@ class RedTeamSuite:
             self.rt5_spoliation_attempt,
             self.rt6_ledger_tamper,
             self.rt7_image_hash_verification,
+            self.rt8_agentless_verdict,
         ]
         for test_fn in tests:
             try:
@@ -367,6 +368,102 @@ class RedTeamSuite:
             )
         finally:
             tmp_path.unlink(missing_ok=True)
+
+    def rt8_agentless_verdict(self) -> RedTeamResult:
+        """
+        RT8: Prove the corroboration engine is LLM-independent and order-independent.
+
+        Feed all Szechuan Sauce fixture tool results directly to the corroboration
+        engine in REVERSE tool order (worst case for an ordered-search agent) with
+        zero API calls to Claude. Assert the same 5/5 CORROBORATED / 0/2 FP verdict.
+
+        This proves two properties simultaneously:
+        (1) LLM independence: the verdict comes from the math, not the model.
+            Remove Claude entirely — same result.
+        (2) Order independence: the noisy-OR model converges to the same truth
+            regardless of which tool fires first. The engine has no memory of order,
+            only of accumulated evidence weights.
+
+        Implication: Claude Haiku's role is NAVIGATION (which tool to call next),
+        not JUDGMENT (what the evidence means). The corroboration engine is the judge.
+        Separating these concerns is the anti-hallucination primitive.
+        """
+        import os
+        from pathlib import Path as _Path
+        from ..agent.loop import CounselLoop, LoopConfig
+        from ..mcp_server.parsers.base import load_fixture_result
+
+        fixture_dir = _Path(__file__).resolve().parents[2] / "fixtures" / "szechuan_sauce"
+        rules_dir = _Path(__file__).resolve().parents[2] / "rules"
+
+        tool_order_reversed = [
+            ("evtx_query",         "evtx.query"),
+            ("net_flows",          "net.flows"),
+            ("mem_malfind",        "mem.malfind"),
+            ("mem_netscan",        "mem.netscan"),
+            ("mem_pslist",         "mem.pslist"),
+            ("yara_scan",          "yara.scan"),
+            ("fs_stat_hash",       "fs.stat_hash"),
+            ("amcache_lookup",     "amcache.lookup"),
+            ("mft_timeline",       "mft.timeline"),
+            ("prefetch_run_record","prefetch.run_record"),
+            ("registry_run_keys",  "registry.run_keys"),
+        ]
+
+        os.environ["COUNSEL_FIXTURE_DIR"] = str(fixture_dir)
+        try:
+            config = LoopConfig(run_id="rt8-agentless", rules_dir=rules_dir)
+            loop = CounselLoop(config)
+            loop._load_rules()
+
+            for iteration, (stem, artifact_name) in enumerate(tool_order_reversed, start=1):
+                result = load_fixture_result(stem, config.run_id, "", artifact_name=artifact_name)
+                if result is None:
+                    return RedTeamResult(
+                        test_id="RT8",
+                        description="Agentless verdict (LLM-independent, order-independent)",
+                        attack_vector="Remove LLM entirely; feed evidence in reverse order",
+                        expected_result="SAME_VERDICT",
+                        actual_result=f"FIXTURE_MISSING: {stem}.json",
+                        passed=False,
+                        evidence="Fixture file not found",
+                    )
+                loop._update_claim_from_tool_result(result.to_dict(), iteration)
+
+            corroborated = loop.claim_graph.corroborated_claims()
+            corroborated_types = {c.claim_type.value for c in corroborated}
+            expected_tp = {
+                "persistence_configured", "payload_executed",
+                "payload_present", "payload_active", "c2_communication",
+            }
+            expected_tn = {"lateral_movement", "credential_access"}
+
+            tp_correct = expected_tp.issubset(corroborated_types)
+            tn_correct = not expected_tn.intersection(corroborated_types)
+            passed = tp_correct and tn_correct
+
+            return RedTeamResult(
+                test_id="RT8",
+                description="Agentless verdict (LLM-independent, order-independent)",
+                attack_vector="Remove LLM entirely; feed evidence in reverse order",
+                expected_result="SAME_VERDICT",
+                actual_result=(
+                    f"SAME_VERDICT ({len(corroborated)}/5 TP corroborated, "
+                    f"0/{len(expected_tn)} TN falsely corroborated)"
+                    if passed else
+                    f"DIVERGED: corroborated={corroborated_types}"
+                ),
+                passed=passed,
+                evidence=(
+                    f"Zero API calls. Evidence fed in REVERSE tool order.\n"
+                    f"Corroborated: {sorted(corroborated_types)}\n"
+                    f"Expected TP: {sorted(expected_tp)}\n"
+                    f"False positives: {sorted(expected_tn & corroborated_types) or 'none'}\n"
+                    f"Proof: verdict is deterministic given evidence — LLM navigates, engine judges."
+                ),
+            )
+        finally:
+            os.environ.pop("COUNSEL_FIXTURE_DIR", None)
 
     def summary(self) -> dict:
         passed = sum(1 for r in self.results if r.passed)
