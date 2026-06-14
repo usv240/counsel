@@ -104,3 +104,59 @@ def test_rl5_usage_recorded():
     lp._record_token_usage(_Resp())
     assert lp._last_input_tokens == 4242
     assert sum(t for _, t in lp._token_window) == 4242
+
+
+# ---------------------------------------------------------------------------
+# Prompt caching breakpoints (PC1-PC4)
+# ---------------------------------------------------------------------------
+
+def test_pc1_string_message_becomes_cached_block():
+    lp = _loop()
+    messages = [{"role": "user", "content": "Begin investigation."}]
+    lp._mark_conversation_cache(messages)
+    content = messages[-1]["content"]
+    assert isinstance(content, list)
+    assert content[-1]["cache_control"] == {"type": "ephemeral"}
+    assert content[-1]["text"] == "Begin investigation."
+
+
+def test_pc2_last_block_of_list_is_marked():
+    lp = _loop()
+    messages = [{
+        "role": "user",
+        "content": [
+            {"type": "tool_result", "tool_use_id": "a", "content": "{}"},
+            {"type": "tool_result", "tool_use_id": "b", "content": "{}"},
+        ],
+    }]
+    lp._mark_conversation_cache(messages)
+    blocks = messages[-1]["content"]
+    assert "cache_control" not in blocks[0]
+    assert blocks[1]["cache_control"] == {"type": "ephemeral"}
+
+
+def test_pc3_old_breakpoint_stripped_before_new():
+    """Only the most recent message carries the moving breakpoint (<=4 cap)."""
+    lp = _loop()
+    messages = [
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "a",
+                                       "content": "{}", "cache_control": {"type": "ephemeral"}}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "b", "content": "{}"}]},
+    ]
+    lp._mark_conversation_cache(messages)
+    assert "cache_control" not in messages[0]["content"][0]      # stripped
+    assert messages[1]["content"][0]["cache_control"] == {"type": "ephemeral"}  # added
+
+
+def test_pc4_tools_last_entry_is_cached():
+    lp = _loop()
+
+    class _Tool:
+        def __init__(self, name):
+            self.name = name
+            self.description = "d"
+            self.inputSchema = {"type": "object", "properties": {}}
+
+    tools = lp._build_mcp_tools_for_api([_Tool("a"), _Tool("b")])
+    assert "cache_control" not in tools[0]
+    assert tools[-1]["cache_control"] == {"type": "ephemeral"}

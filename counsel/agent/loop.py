@@ -327,12 +327,56 @@ class CounselLoop:
             await asyncio.sleep(max(sleep_for, 1.0))
 
     def _record_token_usage(self, response) -> None:
-        """Record a completed request's input-token cost for the pacing window."""
+        """
+        Record a completed request's input-token cost for the pacing window.
+
+        usage.input_tokens already EXCLUDES cache reads, which is exactly what the
+        organisation's per-minute input-token limit counts. So once the conversation
+        prefix is cached, this number collapses to just the new turn's tokens and the
+        pacing stops triggering - the run finishes without sleeps.
+        """
         usage = getattr(response, "usage", None)
         n = getattr(usage, "input_tokens", 0) or 0
         if n:
             self._token_window.append((time.monotonic(), n))
             self._last_input_tokens = n
+        cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+        if cache_read:
+            logger.info(
+                "Prompt cache hit: %d tokens read from cache (excluded from rate limit), "
+                "%d new input tokens billed at full rate", cache_read, n,
+            )
+
+    @staticmethod
+    def _system_blocks(system_text: str) -> list[dict]:
+        """System prompt as a cacheable content block. It is identical on every turn,
+        so caching it makes it a cache read (excluded from the per-minute limit)."""
+        return [{"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}]
+
+    def _mark_conversation_cache(self, messages: list[dict]) -> None:
+        """
+        Move the incremental cache breakpoint to the end of the conversation so the
+        entire prior prefix is a cache read on the next call - cheaper, and excluded
+        from the per-minute input-token limit. Only user messages (dict content) are
+        annotated; assistant SDK content blocks are left untouched. The previous
+        breakpoint is stripped first so we never exceed the 4-breakpoint cap.
+        """
+        for m in messages:
+            c = m.get("content")
+            if isinstance(c, list):
+                for block in c:
+                    if isinstance(block, dict):
+                        block.pop("cache_control", None)
+        if not messages:
+            return
+        last = messages[-1]
+        content = last.get("content")
+        if isinstance(content, str):
+            last["content"] = [
+                {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
+            ]
+        elif isinstance(content, list) and content and isinstance(content[-1], dict):
+            content[-1]["cache_control"] = {"type": "ephemeral"}
 
     def _compact_result_for_context(self, result_dict: dict) -> dict:
         """
@@ -371,6 +415,11 @@ class CounselLoop:
                 "description": tool.description or "",
                 "input_schema": tool.inputSchema if hasattr(tool, "inputSchema") else {"type": "object", "properties": {}},
             })
+        # Cache the tool definitions (static for the whole run). A breakpoint on the
+        # last tool caches the entire tools array as a stable prefix, so it is a cache
+        # read on every turn - cheaper and excluded from the per-minute token limit.
+        if tools:
+            tools[-1]["cache_control"] = {"type": "ephemeral"}
         return tools
 
     def _evidence_context(self) -> str:
@@ -586,14 +635,16 @@ class CounselLoop:
                     # Triage (iter 1) needs full reasoning; gap-fill iterations
                     # just pick the next highest-weight tool — minimal budget.
                     thinking_budget = 5000 if iteration == 1 else 1024
-                    # Proactively pace so the rolling 60s input-token total stays
-                    # under the org's per-minute limit (avoids 429 by design).
+                    # Cache the conversation prefix so prior turns are cache reads
+                    # (excluded from the per-minute limit), then pace on whatever new
+                    # input remains. With caching this collapses to near zero.
+                    self._mark_conversation_cache(messages)
                     await self._pace_for_token_budget(self._last_input_tokens)
                     try:
                         with client.messages.stream(
                             model=MODEL,
                             max_tokens=MAX_TOKENS_PER_TURN,
-                            system=self._system_prompt(),
+                            system=self._system_blocks(self._system_prompt()),
                             messages=messages,
                             tools=mcp_tools,
                             thinking={"type": "enabled", "budget_tokens": thinking_budget},
