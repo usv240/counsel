@@ -3,7 +3,7 @@
 ## Scope
 
 This threat model covers the COUNSEL investigation pipeline running on SIFT Workstation.
-It identifies assets, threats, and mitigations. The RT1–RT7 red-team suite validates
+It identifies assets, threats, and mitigations. The RT1-RT7 red-team suite validates
 that all mitigations hold under active testing.
 
 ## Assets

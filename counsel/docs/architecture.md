@@ -13,11 +13,11 @@
 │                                                                      │
 │   ┌─────────────────────────────────────────────────────────┐       │
 │   │                  Trusted Launcher                        │       │
-│   │  • Holds Ed25519 signing key (agent NEVER sees it)      │       │
-│   │  • Mounts evidence read-only: mount -o ro,loop          │       │
-│   │  • Computes evidence SHA256 hash_in (genesis entry)     │       │
-│   │  • Spawns MCP Server subprocess with run_id + env       │       │
-│   │  • After agent exit: calls External Verifier            │       │
+│   │  - Holds Ed25519 signing key (agent NEVER sees it)      │       │
+│   │  - Mounts evidence read-only: mount -o ro,loop          │       │
+│   │  - Computes evidence SHA256 hash_in (genesis entry)     │       │
+│   │  - Spawns MCP Server subprocess with run_id + env       │       │
+│   │  - After agent exit: calls External Verifier            │       │
 │   └──────────────┬──────────────────────────────────────────┘       │
 │                  │ spawns                                            │
 │         ┌────────▼────────┐  stdio/MCP   ┌────────────────────┐    │
@@ -38,14 +38,14 @@
 │                  ▼                                                   │
 │         ┌────────────────────┐   ┌──────────────────────────┐      │
 │         │ External Verifier  │──►│  Signed Case Package     │      │
-│         │ • re-hash evidence │   │  • ledger.jsonl          │      │
-│         │ • verify chain     │   │  • manifest_{run}.json   │      │
-│         │ • Ed25519 sign     │   │  • HTML case file        │      │
-│         └────────────────────┘   │  • .tar.gz archive       │      │
+│         │ - re-hash evidence │   │  - ledger.jsonl          │      │
+│         │ - verify chain     │   │  - manifest_{run}.json   │      │
+│         │ - Ed25519 sign     │   │  - HTML case file        │      │
+│         └────────────────────┘   │  - .tar.gz archive       │      │
 │                                  └──────────────────────────┘      │
 │                                                                      │
 │  ══════════ TRUST BOUNDARIES ══════════                             │
-│  B1: Agent → Evidence ONLY via typed MCP functions (no file read)   │
+│  B1: Agent -> Evidence ONLY via typed MCP functions (no file read)   │
 │  B2: Signing key in Launcher/Verifier only (agent cannot sign)      │
 │  B3: Agent has NO shell, NO exec, NO write mount (architectural)    │
 └─────────────────────────────────────────────────────────────────────┘

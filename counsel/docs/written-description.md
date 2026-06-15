@@ -60,37 +60,37 @@ Three trust boundaries are enforced architecturally (not via prompts):
 A YAML mini-language for expressing DFIR corroboration knowledge. Each rule cites its forensic provenance (SANS course, Zimmerman tool documentation, MITRE ATT&CK), defines signals with independence groups, and fails closed at load time if malformed. Community-extensible: any DFIR practitioner can write a new rule without touching Python.
 
 **2. Formal Claim-State Epistemics**
-The combination of the 5-state model, noisy-OR confidence with independence-group partitioning, and Expected Calibration Error measurement makes COUNSEL's confidence scores empirically meaningful. When the engine says "CORROBORATED at 0.95," the calibration report shows what fraction of 0.90–1.00 claims were actually correct against the ground-truth answer key.
+The combination of the 5-state model, noisy-OR confidence with independence-group partitioning, and Expected Calibration Error measurement makes COUNSEL's confidence scores empirically meaningful. When the engine says "CORROBORATED at 0.95," the calibration report shows what fraction of 0.90-1.00 claims were actually correct against the ground-truth answer key.
 
 **3. Prompt-Injection-Resistant Evidence Handling**
 Adversarial content in evidence (maliciously named files, registry values containing LLM instruction overrides) is addressed at two levels: (a) parse-before-return strips control characters and bounds string length before the LLM sees it; (b) the agent has no exec/write primitive, so even a successful injection has nothing dangerous to call.
 
-This is not theoretical. `counsel/fixtures/adversarial_injection/` is a complete forensic case ("Operation Weaponized Evidence") where the attacker embedded prompt injection attempts directly in registry `value_data`, MFT filenames, and EVTX event descriptions — all trying to assert `credential_access IS CORROBORATED`. COUNSEL blocks every injection and still correctly identifies the 5 real malware indicators. Verified deterministically: `pytest tests/test_fixture_accuracy.py::test_adv_injection_blocked_credential_access`.
+This is not theoretical. `counsel/fixtures/adversarial_injection/` is a complete forensic case ("Operation Weaponized Evidence") where the attacker embedded prompt injection attempts directly in registry `value_data`, MFT filenames, and EVTX event descriptions - all trying to assert `credential_access IS CORROBORATED`. COUNSEL blocks every injection and still correctly identifies the 5 real malware indicators. Verified deterministically: `pytest tests/test_fixture_accuracy.py::test_adv_injection_blocked_credential_access`.
 
 **4. Agent Reasoning as Hash-Chained Audit Evidence (Thinking in Ledger)**
-Every Claude Haiku 4.5 extended-thinking block is SHA256-hashed after each API call and appended to the audit ledger as `entry_type: "agent_thinking"`. The hash proves the reasoning block existed and was unaltered; the `next_tool` field links it to the subsequent forensic tool call. A judge can trace: *ledger entry N (agent_thinking) → entry N+1 (tool_call) → entry N+2 (claim_state)* and reconstruct exactly what the agent was reasoning when it chose that tool. The agent's internal deliberation becomes a verifiable artifact — not just the outputs.
+Every Claude Haiku 4.5 extended-thinking block is SHA256-hashed after each API call and appended to the audit ledger as `entry_type: "agent_thinking"`. The hash proves the reasoning block existed and was unaltered; the `next_tool` field links it to the subsequent forensic tool call. A judge can trace: *ledger entry N (agent_thinking) -> entry N+1 (tool_call) -> entry N+2 (claim_state)* and reconstruct exactly what the agent was reasoning when it chose that tool. The agent's internal deliberation becomes a verifiable artifact - not just the outputs.
 
 **5. RT8: LLM-Independent, Order-Independent Verdict Proof**
 The definitive architectural proof: remove Claude entirely, feed all 11 forensic tool results directly to the corroboration engine in **reverse** tool order (worst case for a sequential agent), zero API calls. Identical 5/5 CORROBORATED / 0/2 FP result.
 
 This proves two properties simultaneously:
 - *LLM independence*: the verdict is in the math, not the model. Claude Haiku's role is NAVIGATION (which tool to call), not JUDGMENT (what the evidence means).
-- *Order independence*: the noisy-OR model accumulates evidence weights commutatively. There is no "first mover advantage" — the engine converges to the same truth regardless of tool-call order.
+- *Order independence*: the noisy-OR model accumulates evidence weights commutatively. There is no "first mover advantage" - the engine converges to the same truth regardless of tool-call order.
 
 No other AI-DFIR tool can make this claim, because in tools where the LLM is the arbiter, removing the LLM removes the verdict.
 
-Run: `pytest tests/test_rt8_agentless.py -v` — 8 tests, 1.6 seconds, no API key.
+Run: `pytest tests/test_rt8_agentless.py -v` - 8 tests, 1.6 seconds, no API key.
 
 **6. Investigation Replay Animation**
-The HTML Case File includes an "Investigation Replay" tab: a JavaScript player that animates ledger entries appearing one by one in chronological order, with a live claim-state scoreboard updating as evidence accumulates. Play, Pause, Step, Reset. Speed control from Slow to Turbo. Every RULING CHANGE transition (INFERENCE → CORROBORATED) fires a visible state change. The full audit chain — genesis → thinking → tool_call → claim_state → CORROBORATED — plays back in real time. Self-contained in the HTML file, no external libraries, works offline.
+The HTML Case File includes an "Investigation Replay" tab: a JavaScript player that animates ledger entries appearing one by one in chronological order, with a live claim-state scoreboard updating as evidence accumulates. Play, Pause, Step, Reset. Speed control from Slow to Turbo. Every RULING CHANGE transition (INFERENCE -> CORROBORATED) fires a visible state change. The full audit chain - genesis -> thinking -> tool_call -> claim_state -> CORROBORATED - plays back in real time. Self-contained in the HTML file, no external libraries, works offline.
 
 ## What 10/10 on Every Criterion Looks Like
 
 - **Autonomous Execution**: Agent forms hypotheses, hits dead ends, recovers from tool failures, and produces multiple genuine ruling changes driven by gap detection (not scripting).
 - **IR Accuracy**: Benchmarked against locked ground-truth answer key. Published precision, recall, FPR, hallucination rate, and calibration curve. "Hallucinations We Caught" gallery included - radical honesty as a feature.
 - **Breadth/Depth**: Full kill chain across disk + memory + network. MITRE ATT&CK mapped. Super-timeline. Benchmarked against a locked answer key (see Accuracy Report); architecture is case-agnostic and designed to extend to additional fixtures via `COUNSEL_FIXTURE_DIR`.
-- **Constraint Implementation**: Published threat model. RT1–RT7 red-team tests documented failing safely. Prompt injection planted inside evidence (RT3) - the architecture holds because the agent has no dangerous primitives.
-- **Audit Trail**: Every finding → ledger entry → tool call → raw output SHA256 → artifact path + offset. `counsel replay` re-runs any finding on demand. Exportable signed case package.
+- **Constraint Implementation**: Published threat model. RT1-RT7 red-team tests documented failing safely. Prompt injection planted inside evidence (RT3) - the architecture holds because the agent has no dangerous primitives.
+- **Audit Trail**: Every finding -> ledger entry -> tool call -> raw output SHA256 -> artifact path + offset. `counsel replay` re-runs any finding on demand. Exportable signed case package.
 - **Usability**: One-command setup. Terminal-first (SIFT-native Rich TUI). Static HTML Case File (no web server). Analyst Training Mode. Community DSL with 5-minute onboarding guide.
 
 ## How I Built It
@@ -112,22 +112,22 @@ COUNSEL took 3 weeks of solo development:
 
 5. **Fixture system** (`counsel/fixtures/`) - two complete pre-recorded cases:
    `szechuan_sauce/` (normal case, 5 TP / 2 TN) and `adversarial_injection/`
-   ("Operation Weaponized Evidence" — prompt injection planted in evidence artifacts,
+   ("Operation Weaponized Evidence" - prompt injection planted in evidence artifacts,
    5 TP / 1 TN, injection blocked). Full investigation demo without SIFT Workstation.
 
 6. **FastAPI dashboard** (`counsel serve`) - live claims board, SSE agent stream, audit
    ledger viewer, ATT&CK Navigator layer export.
 
-7. **Thinking-in-ledger** (`counsel/agent/loop.py`, `counsel/ledger/ledger.py`) — every
+7. **Thinking-in-ledger** (`counsel/agent/loop.py`, `counsel/ledger/ledger.py`) - every
    Claude Haiku extended-thinking block is SHA256-hashed and appended to the ledger as
    `entry_type: "agent_thinking"`, linking agent reasoning to subsequent tool calls.
 
-8. **Investigation replay animation** (`counsel/report/html_report.py`) — fifth tab in
+8. **Investigation replay animation** (`counsel/report/html_report.py`) - fifth tab in
    the HTML Case File: a JavaScript player animating ledger entries with live claim
    scoreboard. Self-contained, no external libraries.
 
 9. **RT8: Agentless verdict** (`counsel/redteam/suite.py`, `tests/test_rt8_agentless.py`)
-   — 8-test suite proving the corroboration engine produces identical verdicts with zero
+   - 8-test suite proving the corroboration engine produces identical verdicts with zero
    LLM calls, evidence in reverse order. The definitive LLM-independence proof.
 
 ## Challenges
@@ -159,4 +159,4 @@ properties are enforced by process isolation, not by prompts.
 
 ## Demo Narrative (5 minutes)
 
-The demo follows 9 beats: evidence mount + start → triage at speed → Run key → honest INFERENCE → self-correction live (Amcache corroborates Prefetch → CORROBORATED) → cross-source (memory + PCAP) → hallucination caught → constraint test (RT3 fails safely) → replay + signed case file. The self-correction moment is the climax: a claim changes from INFERENCE to CORROBORATED on camera, driven by the engine.
+The demo follows 9 beats: evidence mount + start -> triage at speed -> Run key -> honest INFERENCE -> self-correction live (Amcache corroborates Prefetch -> CORROBORATED) -> cross-source (memory + PCAP) -> hallucination caught -> constraint test (RT3 fails safely) -> replay + signed case file. The self-correction moment is the climax: a claim changes from INFERENCE to CORROBORATED on camera, driven by the engine.

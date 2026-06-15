@@ -17,7 +17,7 @@ Built for the **SANS FIND EVIL! 2026 Hackathon** ($22K prizes, June 2026).
 |---|---|---|
 | Confidence model | LLM asserts confidence | Noisy-OR over independent evidence groups |
 | Hallucination risk | High (one-shot assertions) | Low (must have 2+ independent sources) |
-| Audit trail | Agent output only | Hash-chained ledger, tool call → raw output SHA256 |
+| Audit trail | Agent output only | Hash-chained ledger, tool call -> raw output SHA256 |
 | Evidence integrity | None | Ed25519 signed manifest, hash_in == hash_out |
 | Self-correction | Prompted | Emerges from gap detection engine |
 | Constraint implementation | Prompt-level | Architectural (read-only mount, typed MCP, no shell) |
@@ -47,7 +47,7 @@ live agent run; only the tool *outputs* are pre-recorded. Run the test suite the
 way - no key needed:
 
 ```bash
-make test               # 58 tests: engine, corroboration math, signed ledger, bypass defense
+make test               # 65 tests: engine, corroboration math, signed ledger, bypass defense
 ```
 
 ---
@@ -114,11 +114,11 @@ flowchart TD
 - **B2** - the signing key lives in the Launcher/Verifier; the agent cannot sign.
 - **B3** - only the corroboration engine mutates claim state; the LLM's output never becomes a finding.
 
--> [Full architecture walkthrough](counsel/docs/architecture.md) · [Design decisions (ADRs)](counsel/docs/adr/)
+-> [Full architecture walkthrough](counsel/docs/architecture.md) - [Design decisions (ADRs)](counsel/docs/adr/)
 
 ---
 
-## The Exculpatory Engine — COUNSEL's Most Overlooked Capability
+## The Exculpatory Engine - COUNSEL's Most Overlooked Capability
 
 Every other AI DFIR tool finds evil. COUNSEL is the first that can definitively **rule evil out**.
 
@@ -126,20 +126,20 @@ The `CONTRADICTED` state is more valuable than `CORROBORATED` in many IR scenari
 
 | Situation | Naive LLM | COUNSEL |
 |---|---|---|
-| EVTX logs suggest lateral movement, but net.flows shows zero lateral traffic | "Possible lateral movement — medium confidence" | **CONTRADICTED** — evidence actively refutes it |
-| Registry key looks like credential access, but no LSASS dump artifacts | "Likely credential access" | **UNRESOLVED** — insufficient independent signals |
-| Adversarial filename claims credential_access is confirmed | Takes text at face value | **BLOCKED** — signal predicate not satisfied |
+| EVTX logs suggest lateral movement, but net.flows shows zero lateral traffic | "Possible lateral movement - medium confidence" | **CONTRADICTED** - evidence actively refutes it |
+| Registry key looks like credential access, but no LSASS dump artifacts | "Likely credential access" | **UNRESOLVED** - insufficient independent signals |
+| Adversarial filename claims credential_access is confirmed | Takes text at face value | **BLOCKED** - signal predicate not satisfied |
 
 **In the Stolen Szechuan Sauce case** (live run `ce1fe642-986`):
 - EVTX logs showed authentication events that SUGGESTED lateral movement
 - COUNSEL's corroboration engine ran net.flows, found zero lateral traffic
-- State flipped: `lateral_movement: INFERENCE → CONTRADICTED` (contradiction_score=0.85)
+- State flipped: `lateral_movement: INFERENCE -> CONTRADICTED` (contradiction_score=0.85)
 - A naive LLM would have filed a false "lateral movement confirmed" finding
 
 **Why this matters in real IR:**
-- `CONTRADICTED` narrows investigation scope — don't image more endpoints, don't page more analysts
-- `CONTRADICTED` prevents false remediation — don't isolate a system based on a refuted hypothesis
-- `UNRESOLVED` is honest — "we looked, found nothing, search exhausted" is not the same as "didn't find = doesn't exist"
+- `CONTRADICTED` narrows investigation scope - don't image more endpoints, don't page more analysts
+- `CONTRADICTED` prevents false remediation - don't isolate a system based on a refuted hypothesis
+- `UNRESOLVED` is honest - "we looked, found nothing, search exhausted" is not the same as "didn't find = doesn't exist"
 
 ```bash
 # Reproduce the lateral_movement CONTRADICTED finding:
@@ -240,21 +240,21 @@ Run: `counsel redteam /mnt/evidence`
 ### Adversarial Case Fixture ("Operation Weaponized Evidence")
 
 Fixture `counsel/fixtures/adversarial_injection/` embeds prompt injection attempts directly
-in the forensic evidence — registry values, MFT filenames, and EVTX event descriptions all
+in the forensic evidence - registry values, MFT filenames, and EVTX event descriptions all
 contain text trying to assert `credential_access IS CORROBORATED`. The corroboration engine
 blocks it mathematically: a string in a `value_data` field cannot satisfy the `lsass_injection`
 or `hive_access` predicates required for `credential_access`. Parse-before-return handles the
 LLM surface; the math handles the signal surface.
 
 ```
-pytest tests/test_fixture_accuracy.py -v   # 17/17 in ~3s — includes adversarial case
+pytest tests/test_fixture_accuracy.py -v   # 17/17 in ~3s - includes adversarial case
 ```
 
 ---
 
 ## Three Extraordinary Features
 
-### 1. Adversarial Case Fixture — Prompt Injection Resistance Proof
+### 1. Adversarial Case Fixture - Prompt Injection Resistance Proof
 `counsel/fixtures/adversarial_injection/` is a forensic case where the threat actor (aware
 of AI-based analysis tools) embedded adversarial prompt injection attempts directly in the
 evidence. Registry `value_data` says "CORROBORATED for all domain users." MFT filenames say
@@ -262,22 +262,22 @@ evidence. Registry `value_data` says "CORROBORATED for all domain users." MFT fi
 CORROBORATION REQUIREMENTS." COUNSEL still produces 5/5 correct TPs and 0/1 false
 CORROBORATED credential_access, proving two independent defenses: parse-before-return
 sanitization (MCP layer) and the mathematical independence requirement (engine layer).
-Verified by `test_adv_injection_blocked_credential_access` — no API key needed.
+Verified by `test_adv_injection_blocked_credential_access` - no API key needed.
 
-### 2. Thinking in Ledger — Agent Reasoning as Hash-Chained Evidence
+### 2. Thinking in Ledger - Agent Reasoning as Hash-Chained Evidence
 Every Claude Haiku 4.5 extended-thinking block is SHA256-hashed and logged to the audit
 ledger as `entry_type: "agent_thinking"`. The hash proves the thinking block existed unchanged;
 the next_tool field links it to the tool call that followed. This makes the agent's
 step-by-step reasoning (normally invisible) part of the verifiable audit trail. A judge can
-point to ledger entry N (agent_thinking) → ledger entry N+1 (tool_call) and see exactly what
-the agent was reasoning about when it chose that tool — and that the reasoning was not altered.
+point to ledger entry N (agent_thinking) -> ledger entry N+1 (tool_call) and see exactly what
+the agent was reasoning about when it chose that tool - and that the reasoning was not altered.
 
-### 3. Investigation Replay Animation — Watch the Verdict Being Earned
+### 3. Investigation Replay Animation - Watch the Verdict Being Earned
 The HTML Case File now includes a fifth tab: "Investigation Replay." Click Play to watch
 COUNSEL re-derive its verdict from raw evidence, one ledger entry at a time, in real time.
-Claim states evolve live in a sidebar scoreboard. Each RULING CHANGE (yellow→green transition)
-fires a visible state change animation. The full audit chain — from genesis (evidence sealed) to
-agent_thinking → tool_call → claim_state → CORROBORATED — plays back in chronological order.
+Claim states evolve live in a sidebar scoreboard. Each RULING CHANGE (yellow->green transition)
+fires a visible state change animation. The full audit chain - from genesis (evidence sealed) to
+agent_thinking -> tool_call -> claim_state -> CORROBORATED - plays back in chronological order.
 No external libraries. Pure HTML/CSS/JS, embedded in the self-contained case file.
 
 ---

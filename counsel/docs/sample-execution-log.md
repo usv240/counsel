@@ -23,7 +23,7 @@ Every entry in `counsel-ledger.jsonl` has this structure:
 }
 ```
 
-`entry_hash = SHA256(prev_hash + canonical_json_of_entry)` — every entry is chained to its predecessor.
+`entry_hash = SHA256(prev_hash + canonical_json_of_entry)` - every entry is chained to its predecessor.
 
 There are six entry types:
 
@@ -32,11 +32,11 @@ There are six entry types:
 | `genesis` | Launcher (pre-run) | Pins evidence SHA256, tool catalog hash, rule set hash |
 | `tool_call` | MCP server | Records every forensic tool invocation + raw output SHA256 |
 | `agent_thinking` | Launcher (post-run) | SHA256 hash of each extended-thinking block + next tool chosen |
-| `claim_state` | Launcher (post-run) | Records every state transition (INFERENCE→CORROBORATED, etc.) |
+| `claim_state` | Launcher (post-run) | Records every state transition (INFERENCE->CORROBORATED, etc.) |
 | `agent_decision` | Launcher (post-run) | Reserved for structured agent decision records |
 | `halt` | Launcher (post-run) | Termination reason, final counts, elapsed time |
 
-**`agent_thinking` is the novel entry type unique to COUNSEL.** Every Claude Haiku extended-thinking block is SHA256-hashed immediately after the API response and stored here — not the raw text (which can be large) but its hash, which is tamper-evident. The `next_tool` field links each thinking block to the forensic tool call that followed. An auditor can verify: at seq N the agent was reasoning about X, at seq N+1 it called tool Y, at seq N+2 the claim state changed to Z.
+**`agent_thinking` is the novel entry type unique to COUNSEL.** Every Claude Haiku extended-thinking block is SHA256-hashed immediately after the API response and stored here - not the raw text (which can be large) but its hash, which is tamper-evident. The `next_tool` field links each thinking block to the forensic tool call that followed. An auditor can verify: at seq N the agent was reasoning about X, at seq N+1 it called tool Y, at seq N+2 the claim state changed to Z.
 
 ---
 
@@ -44,7 +44,7 @@ There are six entry types:
 
 The hashes below are real SHA256 values computed by the ledger machinery
 when run against the fixture files. Run the tool yourself to get live values.
-These are abbreviated to `<sha256:first16>…` for readability.
+These are abbreviated to `<sha256:first16>...` for readability.
 
 ```
 seq=0  entry_type=genesis
@@ -86,8 +86,8 @@ seq=3  entry_type=tool_call
 
   [open_gaps returned to agent after seq=3:
     {tool: "amcache_lookup", weight: 0.65, for_claim: "payload_executed", claim_state: "INFERENCE",
-     note: "Unchecked independent signal — calling this moves payload_executed toward CORROBORATED"}
-   → agent calls amcache_lookup next: self-correction demonstrated]
+     note: "Unchecked independent signal - calling this moves payload_executed toward CORROBORATED"}
+   -> agent calls amcache_lookup next: self-correction demonstrated]
 
 seq=4  entry_type=tool_call
   payload:
@@ -127,7 +127,7 @@ seq=9  entry_type=tool_call
 
   [MCP server subprocess exits; Launcher writes post-run entries]
 
-  [agent_thinking entries written first — one per API response that had thinking blocks]
+  [agent_thinking entries written first - one per API response that had thinking blocks]
 
 seq=10  entry_type=agent_thinking      <-- written by Launcher post-run
   payload:
@@ -139,8 +139,8 @@ seq=10  entry_type=agent_thinking      <-- written by Launcher post-run
   entry_hash: <sha256:...>
 
   Purpose: proves the agent was reasoning about amcache_lookup BEFORE calling it.
-  The hash proves the reasoning existed and was unaltered. Not the raw text — just
-  the fingerprint. Auditors can verify: thinking → tool → state change is a causal chain.
+  The hash proves the reasoning existed and was unaltered. Not the raw text - just
+  the fingerprint. Auditors can verify: thinking -> tool -> state change is a causal chain.
 
 seq=11  entry_type=claim_state         <-- written by Launcher post-run
   payload:
@@ -185,7 +185,7 @@ seq=14  entry_type=halt
 ## Replay Verification
 
 `counsel replay` verifies that re-running a tool produces the same raw output SHA256 recorded
-in the ledger. It only works on `tool_call` entries (seq 1–9 in this run).
+in the ledger. It only works on `tool_call` entries (seq 1-9 in this run).
 
 ```bash
 # Replay seq=2 (prefetch_run_record) and verify raw output hash
@@ -200,7 +200,7 @@ counsel replay counsel-output/<run-id>/counsel-ledger.jsonl 2 \
 # Verdict:          REPRODUCED
 ```
 
-Replaying a `claim_state` or `halt` entry returns `NOT_A_TOOL_CALL` by design —
+Replaying a `claim_state` or `halt` entry returns `NOT_A_TOOL_CALL` by design -
 only tool executions are replayable.
 
 ---
@@ -212,6 +212,34 @@ counsel verify-package counsel-output/<run-id>/counsel_case_<run-id>.tar.gz \
   ~/.counsel/keys/counsel_signing_pub.pem
 ```
 
+---
+
+## Token Usage
+
+COUNSEL logs token usage on every agent turn. Prompt caching means that after the
+first turn almost all input tokens are served from cache, so only a handful of new
+tokens are billed at full rate. A representative live run on Claude Haiku 4.5
+(`counsel investigate counsel/fixtures/szechuan_sauce`):
+
+| Iteration | Cache read (input tokens) | New input billed | Tools called that turn |
+|---|---|---|---|
+| 1 | 0 (cache write) | full prompt | registry, prefetch, mft |
+| 2 | 5,002 | 6 | fs.stat_hash x3, evtx.query |
+| 3 | 11,745 | 6 | mem.pslist x2, mem.malfind |
+| 4 | 21,571 | 6 | mem.netscan, net.flows |
+| 5 | 29,958 | 6 | yara.scan, amcache.lookup |
+| 6 | 37,701 | 6 | end_turn |
+
+These counts print live during the run as:
+
+```
+Prompt cache hit: 37701 tokens read from cache (excluded from rate limit), 6 new input tokens billed at full rate
+```
+
+The per-tool record counts (how many forensic records each call returned) are stored
+in the ledger's `tool_call` entries, and the whole run finishes in about two minutes,
+well under the per-minute token limit.
+
 This recomputes `SHA256(prev_hash + canonical_json)` for every entry and confirms
 the stored `entry_hash` matches. Any post-hoc modification of any entry fails this check.
 
@@ -221,8 +249,8 @@ the stored `entry_hash` matches. Any post-hoc modification of any entry fails th
 
 The generated `counsel_case_<run-id>.html` embeds all ledger entries as JSON and includes
 a JavaScript replay player (fifth tab: "Investigation Replay"). Click Play to watch entries
-animate in chronological order — genesis → agent_thinking → tool_call → claim_state →
-CORROBORATED — with a live claim-state scoreboard updating as evidence accumulates.
+animate in chronological order - genesis -> agent_thinking -> tool_call -> claim_state ->
+CORROBORATED - with a live claim-state scoreboard updating as evidence accumulates.
 
 ---
 
