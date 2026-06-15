@@ -1,14 +1,14 @@
-# ADR-0004: A signed, hash-chained ledger for court-grade provenance
+# ADR-0004: Write every step to a signed, tamper-evident ledger
 
 **Status:** Accepted
 **Date:** 2026-06-11
 
----
+**In one line:** every step the agent takes is recorded so that anyone can check the work and catch tampering.
 
-A verdict is only as useful as a sceptic's ability to check it. Agent output on its own - "here are my findings" - gives a reviewer nothing to verify. There is no proof the output was not edited after the run, and no way to trace a specific finding back to the specific tool execution that produced it. For a tool whose entire pitch is "a senior analyst could sign this," that gap is fatal.
+A verdict is only useful if a sceptic can check it. The agent simply saying "here are my findings" gives a reviewer nothing. There is no proof the output was not edited afterward, and no way to follow a finding back to the exact tool run that produced it. For a tool whose whole pitch is "an analyst could sign this," that is a dealbreaker.
 
-The decision: every step of the investigation is appended to a hash-chained ledger, and the ledger is signed. Each entry stores the SHA256 of the previous entry, so altering any row breaks every hash after it - tampering is detectable by recomputation. A separate Verifier process signs the chain with an Ed25519 key, and that key lives in the Launcher/Verifier, never in the agent (the agent cannot sign its own work - see trust boundary B2). The evidence itself is SHA256-hashed before and after the run; a match proves the analysis modified nothing. And every claim's evidence carries the ledger sequence numbers of the tool calls behind it, so any finding is one click from the exact `tool_call` that produced it.
+So COUNSEL writes every step to a ledger as it goes: each tool run, each change of a finding's status, the final halt. Each entry carries a fingerprint (a hash) of the entry before it, so if anyone edits one row, every row after it stops matching and the tampering shows. A separate verifier signs the whole chain with a private key, and that key never lives with the agent, so the agent cannot quietly approve its own work. The evidence is also fingerprinted before and after the run; if the two match, the analysis changed nothing.
 
-Alternatives were thinner. A plain append-only log gives ordering but no tamper-evidence. Signing only the final report proves the report is ours but says nothing about the steps that produced it. Neither lets a judge trace a finding to its source, which is an explicit judging requirement and, more importantly, the actual standard for forensic admissibility.
+The result is that every finding links straight to the tool runs behind it. You can click a finding and land on the exact step that produced it.
 
-The cost is operational complexity: a keypair to manage, a verifier to run, and the discipline of writing every tool call, ruling change, and halt to the chain in the correct order across process boundaries. We accept it because tamper-evidence and end-to-end traceability are exactly what move a result from "an AI said so" to "here is the signed record, verify it yourself." That is the difference the ledger buys.
+The cost is more moving parts: a key to manage, a verifier to run, and the discipline of logging everything in order. We accept it because this is the line between "an AI said so" and "here is the signed record, check it yourself."

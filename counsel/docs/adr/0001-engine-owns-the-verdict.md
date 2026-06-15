@@ -1,14 +1,14 @@
-# ADR-0001: The corroboration engine, not the language model, owns every verdict
+# ADR-0001: The engine decides the verdict, not the AI
 
 **Status:** Accepted
 **Date:** 2026-06-10
 
----
+**In one line:** the AI chooses what to investigate; a fixed set of rules decides what is actually true.
 
-The obvious way to build an AI DFIR agent is to hand the model the evidence and ask "what does this show?" It works in a demo. It also hallucinates. An LLM that sees an authentication event in an EVTX log will happily report "lateral movement: confirmed," because the words are there. It cannot tell the difference between "the string lsass appears" and "lsass was injected." In incident response that distinction is the whole job, and a confident-but-wrong finding is worse than no finding - it launders a guess into an authoritative claim that ends up in a report, or in court.
+If you hand evidence to an AI and ask "what happened here?", it will make things up. It sees the word "lsass" in a log and reports "credentials were stolen" even when nothing was. In a real case that kind of confident guess is dangerous, because it can end up in an incident report or a courtroom.
 
-Three softer fixes were considered and rejected. **Better prompting** ("only assert a finding if two independent sources agree") is a prompt-based guardrail: it holds until the model ignores it, and the adversarial-injection test (see ADR-0005) shows attackers can plant text in the evidence that tells the model to ignore exactly such instructions. **A fact-checker pass** is just another LLM call with the same anchoring problem. **Ensemble voting** averages over noise, not over genuine independent evidence.
+So in COUNSEL the AI never decides a finding. It only decides the next step: which forensic tool to run. A separate engine reads the evidence those tools return and gives each finding a status. The AI investigates. The engine rules.
 
-The decision: the language model never assigns a claim's state. It is a router - it decides *which forensic tool to run next* and reasons about what is still missing. A separate, deterministic corroboration engine reads the typed records those tools return and assigns each claim one of five states (see ADR-0003). The model's output is an input to the engine, never the verdict itself.
+Why not just tell the AI to be careful in its prompt? Because a rule written in a prompt only holds until the model ignores it, and our injection test ([ADR-0005](0005-parse-before-return.md)) shows an attacker can plant text in the evidence that tells the model to do exactly that. A rule built into the code cannot be talked out of.
 
-This is the architectural core of COUNSEL, and it is what the line "the AI decides where to look, the math decides what is true" actually means. The trade-off is real: the engine needs rules, expressed in a YAML corroboration DSL, which is more upfront work than writing a prompt. But the payoff is a verdict that is reproducible (the same evidence always yields the same ruling), measurable (false-positive rate 1.0 -> 0.0 against a naive baseline), and defensible (every ruling traces to typed evidence, not to a sentence the model generated). A prompt cannot give you any of those three.
+The cost is that the engine needs rules written ahead of time, in a simple YAML format. That is more work than writing a prompt. In return you get three things a prompt can never give you: the same evidence always produces the same verdict, the false-positive rate drops from 1.0 to 0.0 against a plain LLM, and every finding traces back to real evidence instead of a sentence the model wrote.
