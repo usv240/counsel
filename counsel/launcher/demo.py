@@ -128,7 +128,7 @@ def run_demo(case: str, output_dir: Path) -> dict:
         reason="all_claims_settled" if open_claims == 0 else "bounded_search_complete",
         iteration=iteration,
         open_claims=open_claims,
-        corroborated_claims=len(loop.claim_graph.corroborated_claims()),
+        corroborated_claims=len(loop.claim_graph.distinct_corroborated()),
         elapsed_seconds=elapsed,
     )
 

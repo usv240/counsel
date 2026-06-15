@@ -214,7 +214,7 @@ def investigate(
         reason=halt_reason,
         iteration=loop._last_iteration,
         open_claims=open_claims,
-        corroborated_claims=len(claim_graph.corroborated_claims()),
+        corroborated_claims=len(claim_graph.distinct_corroborated()),  # distinct findings (matches the verdict headline)
         elapsed_seconds=elapsed,
     )
     if loop._halt_reason:

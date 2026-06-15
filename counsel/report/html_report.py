@@ -184,6 +184,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .claim-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border-soft); font-size: 12px; }
     .claim-indicator { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: background 0.4s; flex-shrink: 0; }
     .claim-indicator.cor { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .claim-indicator.con { background: var(--red); box-shadow: 0 0 6px var(--red); }
     .claim-indicator.inf { background: var(--yellow); }
     .claim-indicator.obs { background: var(--dim); }
 
@@ -585,13 +586,20 @@ function replayEntryHTML(e) {
        + detail;
 }
 
+const STATE_RANK = { OBSERVED: 0, UNRESOLVED: 1, INFERENCE: 2, CONTRADICTED: 3, CORROBORATED: 4 };
 function updateClaimScoreboard(claimType, newState) {
   if (!claimType) return;
-  claimStates[claimType] = newState;
+  // Keep the STRONGEST state seen per type - the same precedence the verdict uses
+  // for its distinct findings - so a later, weaker transition of a *different* claim
+  // instance of the same type can't downgrade the panel or the corroborated count.
+  const cur = claimStates[claimType];
+  if (cur === undefined || (STATE_RANK[newState] || 0) >= (STATE_RANK[cur] || 0)) {
+    claimStates[claimType] = newState;
+  }
   const rows = document.getElementById('claim-rows');
   rows.innerHTML = '';
   Object.entries(claimStates).forEach(([ct, st]) => {
-    const cls = st === 'CORROBORATED' ? 'cor' : st === 'INFERENCE' ? 'inf' : 'obs';
+    const cls = st === 'CORROBORATED' ? 'cor' : st === 'CONTRADICTED' ? 'con' : st === 'INFERENCE' ? 'inf' : 'obs';
     rows.innerHTML += '<div class="claim-row">'
       + '<div class="claim-indicator ' + cls + '"></div>'
       + '<span style="flex:1">' + ct + '</span>'
