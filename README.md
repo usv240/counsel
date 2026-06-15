@@ -85,23 +85,36 @@ counsel redteam /mnt/evidence
 
 ## Architecture
 
-```
-[ Launcher ] ──spawns──> [ MCP Server ] <──stdio──> [ Agent: Claude Haiku 4.5 ]
-  signs manifest            11 typed tools              MCP-only, no shell
-  holds signing key         parse-before-return         adaptive thinking
-  read-only mount           appends to ledger           cannot sign
-        |                        |
-        v                        v
-  [ Verifier ]            [ Ledger JSONL ]
-  Ed25519 sign            hash-chained
-  chain verify            append-only
-  hash_in == hash_out     replay command
+```mermaid
+flowchart TD
+    EV["Evidence - read-only mount<br/>disk, memory, network, logs"]
+
+    subgraph MCP["MCP Server - the trust boundary"]
+        T["11 typed forensic tools<br/>no shell, no exec<br/>parse-before-return"]
+    end
+
+    AG["Agent - Claude Haiku 4.5<br/>picks WHICH tool to run next<br/>reasons about gaps, self-corrects<br/>CANNOT assert a finding"]
+
+    ENG["Corroboration Engine - deterministic<br/>noisy-OR over independent evidence groups<br/>5 states: OBSERVED, INFERENCE,<br/>CORROBORATED, CONTRADICTED, UNRESOLVED<br/>needs 2 independent sources - OWNS every verdict"]
+
+    LED["Ed25519-signed, hash-chained ledger<br/>every finding traces to its tool call"]
+    OUT["HTML case file + signed package"]
+
+    EV --> MCP
+    AG -->|"typed tool calls only"| MCP
+    MCP -->|"parsed, typed records"| ENG
+    AG -.->|"reads claims, requests next tool"| ENG
+    ENG --> LED --> OUT
 ```
 
+**The one idea:** the agent decides *where to look*; the deterministic engine decides *what is true*. The language model physically cannot turn its own opinion into a verdict.
+
 **Three trust boundaries (architectural, not prompt-based):**
-- B1: Agent reaches evidence ONLY through typed MCP functions
-- B2: Signing key lives in Launcher/Verifier; agent cannot sign
-- B3: Agent has no shell, no exec, no write mount
+- **B1** - the agent reaches evidence ONLY through typed MCP functions (no shell, no exec, no write mount).
+- **B2** - the signing key lives in the Launcher/Verifier; the agent cannot sign.
+- **B3** - only the corroboration engine mutates claim state; the LLM's output never becomes a finding.
+
+-> [Full architecture walkthrough](counsel/docs/architecture.md) · [Design decisions (ADRs)](counsel/docs/adr/)
 
 ---
 
