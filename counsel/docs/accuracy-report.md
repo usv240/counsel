@@ -31,6 +31,12 @@ and 23 total RULING CHANGE events with the same 9 OBSERVED->INFERENCE / 11
 INFERENCE->CORROBORATED / 2 INFERENCE->CONTRADICTED / 1 OBSERVED->UNRESOLVED split. The
 corroboration engine - not the LLM's phrasing or tool-call order - determines the verdict.
 
+**On the "8 vs 5" count, to be unambiguous:** the case file's stat box shows **8 CORROBORATED
+finding types**. Those are the 5 graded true positives listed below, plus 3 additional correct
+types that fall outside the answer key (`defense_evasion`, `discovery`, `exfiltration`). The
+graded scoring is therefore recall 5/5 = 1.00 and false-positive rate 0/2 = 0.00. The 3 extra
+types are correct findings, not false positives; they simply are not part of the graded answer key.
+
 ### True positives (5/5 reached CORROBORATED)
 
 | # | claim_type | subject_hint | Result | Support | Independent evidence groups |
